@@ -1,0 +1,63 @@
+You are reviewing a full-stack message-forwarding automation system called AutoForwardX. It reads messages from private Telegram channels, routes them through Discord for filtering/editing, and posts them back to Telegram. It includes trap detection, AI filtering, admin controls, and a web UI.
+
+Please verify the following across the entire project:
+
+---
+
+🔍 FUNCTIONAL COMPLETENESS CHECK
+
+1. Does each main component exist and behave correctly?
+   - Telegram Reader (Telethon): Reads and maps messages
+   - Discord Webhook Handler: Receives and stores Discord messages
+   - Discord Bot: Monitors for edits, traps, and replies
+   - Telegram Poster Bot (Pyrogram): Posts to destination channels, supports edits/deletes
+   - Telegram Admin Bot: Inline controls (pause/resume/block/trap alert)
+   - Web Dashboard (UI): Config and control panel
+   - Session Loader: Handles login via OTP and `.session` file creation
+
+2. Are all required features implemented?
+   - Per-pair routing (session + bot + webhook)
+   - Global and pair-based blocklists
+   - Trap types (text, image, edit-based)
+   - AI rewriting logic (if applicable)
+   - Format preservation (bold, links, replies, etc.)
+   - Edit/delete sync across platforms
+
+---
+
+🧠 TECHNICAL QUALITY CHECK
+
+3. Are all functions implemented with clean, reusable logic?
+4. Are modules decoupled and organized by purpose (reader, bot, poster, UI)?
+5. Are environment variables securely used (e.g. no hardcoded tokens)?
+6. Are API calls (Discord, Telegram) async and rate-limit aware?
+7. Are there retries or error handling for failed requests?
+
+---
+
+🧪 ROBUSTNESS & SECURITY CHECK
+
+8. Are session files validated before use?
+9. Are webhooks tested and isolated per pair?
+10. Are messages validated (e.g., non-empty, no banned content)?
+11. Can the system recover gracefully from partial failures?
+12. Are all config files versioned and readable (`pairs.json`, `blocklist.json`, `sessions.json`)?
+
+---
+
+📦 SYSTEM COMPLETION CHECK
+
+13. Does the system start and stop cleanly with logs?
+14. Are all necessary background tasks launched and monitored?
+15. Are admin actions from Telegram Bot reflected in real-time?
+16. Is there a clean way to deploy, restart, or migrate the system?
+17. Are all features in the system design documentation implemented?
+
+---
+
+✅ After checking, summarize with:
+
+- ✅ What is complete and working
+- ⚠️ What is missing or buggy
+- 🛠 Suggested improvements
+- 📌 Final verdict: Is the project production-ready?

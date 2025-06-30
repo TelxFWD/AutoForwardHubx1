@@ -1,0 +1,82 @@
+You are reviewing a full-stack, multi-process project named AutoForwardX. It includes components for Telegram-to-Discord and Telegram-to-Telegram message forwarding, trap detection, and multi-user management.
+
+Please check whether the following functions are fully implemented, correctly connected, and logically sound:
+
+---
+
+### 🔐 Session Management (Telethon)
+- Is there a way to start a session using a phone number and OTP?
+- Are `.session` files created and stored securely?
+- Is session metadata written to `sessions.json`?
+- Can multiple sessions run concurrently?
+
+---
+
+### 🚦 Process Control
+- Are there working APIs to start/stop/restart `userbot`, `poster`, `discord bot`, and `copier`?
+- Are background Python processes handled using `subprocess` or another daemon method?
+- Can each component be monitored (PID, status)?
+
+---
+
+### 📤 Telegram Poster
+- Does it post messages to destination channels?
+- Does it support Markdown/HTML formatting?
+- Can it edit/delete messages if the original is changed?
+
+---
+
+### 🧠 Trap Detection
+- Is there a centralized module to detect:
+  - Text-based traps?
+  - Image-based traps using hash?
+  - Multi-edit traps?
+- Does it return boolean or decision object for blocking messages?
+
+---
+
+### 🤖 Telegram Admin Bot
+- Are inline buttons implemented for:
+  - Pause/Resume Pair
+  - Pause/Resume All
+  - Add Blocked Word
+  - Block Current Image
+  - Show Blocklist
+- Can it send alerts when traps are detected or a session fails?
+
+---
+
+### 🔁 Edit/Delete Sync
+- Is there a mapping system to track Telegram ↔ Discord ↔ Telegram message IDs?
+- When a message is edited or deleted on Discord or Telegram, is the update reflected?
+
+---
+
+### 📡 Telegram Copier (Multi-User)
+- Can it load multiple user sessions from `user_copies.json`?
+- Can each user forward multiple source → destination channel pairs?
+- Are traps and formatting checks applied per user?
+- Can users be paused or resumed individually?
+
+---
+
+### 🌐 Web Dashboard
+- Can users add/edit sessions?
+- Can users configure per-pair routing?
+- Can users upload session files?
+- Are all config JSON files properly read/written from the UI?
+
+---
+
+### 📦 Other Checks
+- Are `.env` variables used securely (API keys, tokens)?
+- Are failures logged?
+- Are there retries for Telegram/Discord API failures?
+- Is error handling consistent across modules?
+
+---
+
+✅ After checking, summarize the results with:
+- ✅ Fully implemented and working
+- ⚠️ Missing or incomplete
+- 🧠 Suggestions to improve architecture, reliability, or maintainability

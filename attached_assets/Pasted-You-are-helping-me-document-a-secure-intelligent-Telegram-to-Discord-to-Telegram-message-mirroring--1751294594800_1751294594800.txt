@@ -1,0 +1,63 @@
+You are helping me document a secure, intelligent Telegram-to-Discord-to-Telegram message mirroring system called AutoForwardX. I've already documented the architecture, backend, frontend, database, and API.
+
+Now complete the missing parts of the documentation as described below.
+
+✅ Write in clean, markdown format with clear headings.
+✅ Maintain the structure style of my existing SYSTEM_DOCUMENTATION.md
+✅ Keep it technical and developer-friendly.
+
+❗ ADD these sections:
+
+1. 🔐 **Session Management (OTP Setup for Telethon)**
+   - How to create a userbot session using Telethon and OTP
+   - Where `.session` files are stored
+   - How these are linked to pairs
+   - Support for multiple sessions per account
+
+2. 🤖 **Discord Bot Logic**
+   - Role of Discord bot (not webhook)
+   - Editing and deleting messages
+   - AI filtering and trap detection
+   - How it works with message mapping
+   - Handling multiple edits (trap detection logic)
+
+3. 📤 **Telegram Posting Bot**
+   - How to use multiple Telegram bot tokens
+   - Posting, editing, and deleting messages to destination channels
+   - `.env` config for bot tokens
+   - Routing by `pairId`
+
+4. 🧠 **Trap Detection & Auto-Pause Logic**
+   - What defines a trap
+   - Trap patterns (text/image/edit traps)
+   - Thresholds and cooldown behavior
+   - How a pair gets paused/resumed automatically
+
+5. ⚙️ **Webhook Management**
+   - How one webhook per Discord channel is used
+   - How webhooks are registered/stored/updated
+   - UI control or backend endpoint used for management
+
+6. 📝 **Blocklist Scope: Global vs Per-Pair**
+   - Schema example
+   - How global and local blocklists are merged
+   - Conflict handling
+
+7. 📲 **Telegram Admin Bot**
+   - Features:
+     - Inline buttons to pause/resume/block/show list
+     - Alerts for traps, session errors, edits
+   - Example command and button payloads
+   - Environment variables needed (admin ID, bot token)
+
+8. 🔄 **Message Flow: End-to-End Lifecycle**
+   - How a message goes from:
+     - Source Telegram channel
+     - → Discord via webhook
+     - → Discord bot filter
+     - → Telegram bot post
+   - Mention mapping of message IDs and edit/delete sync
+
+Then output the content in markdown.
+
+Do not repeat sections that are already documented unless necessary for understanding.

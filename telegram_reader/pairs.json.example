@@ -1,0 +1,22 @@
+{
+  "GBPUSD": {
+    "source_tg_channel": "@vip_source_channel",
+    "discord_webhook": "https://discord.com/api/webhooks/123456789/abcdef",
+    "destination_tg_channel": "@client_channel",
+    "bot_token": "123456:ABCDEF...",
+    "session": "gold_session_1",
+    "status": "active",
+    "enable_ai": true,
+    "trap_threshold": 3
+  },
+  "XAUUSD": {
+    "source_tg_channel": "@gold_signals_vip",
+    "discord_webhook": "https://discord.com/api/webhooks/987654321/fedcba",
+    "destination_tg_channel": "@gold_public",
+    "bot_token": "654321:FEDCBA...",
+    "session": "gold_session_2", 
+    "status": "active",
+    "enable_ai": false,
+    "trap_threshold": 5
+  }
+}

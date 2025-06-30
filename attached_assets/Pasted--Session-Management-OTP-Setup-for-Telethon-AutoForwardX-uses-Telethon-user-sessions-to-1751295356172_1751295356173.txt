@@ -1,0 +1,193 @@
+## 🔐 Session Management (OTP Setup for Telethon)
+
+AutoForwardX uses **Telethon user sessions** to read messages from private Telegram channels.
+
+### 🔧 How to Add a Session:
+
+1. Run the session loader script:
+   ```bash
+   python3 telegram_reader/session_loader.py
+Enter your phone number (e.g., +91xxxxxxxxxx)
+
+Telegram sends you an OTP → paste it into the terminal.
+
+The session file is saved as gold_session_1.session
+
+📁 Session Config Format:
+Add the session to sessions.json:
+
+json
+Copy
+Edit
+{
+  "gold_session_1": {
+    "phone": "+91xxxxxxxxxx",
+    "session_file": "gold_session_1.session",
+    "status": "active"
+  }
+}
+Each signal pair (in pairs.json) references a session:
+
+json
+Copy
+Edit
+"session": "gold_session_1"
+✅ You can use multiple .session files per Telegram account for load balancing.
+
+🤖 Discord Bot Logic
+The Discord bot complements webhooks and performs advanced tasks that webhooks can’t:
+
+✨ Responsibilities:
+Edit messages (via message ID mapping)
+
+Delete trap messages
+
+Detect bait edits (e.g., messages edited 3–4 times)
+
+Relay trap alerts to the Admin Bot
+
+Optionally rewrite messages using AI (GPT or local)
+
+🛠 Technologies:
+discord.py
+
+Connected to message_map.json for Telegram ↔ Discord sync
+
+📤 Telegram Poster Bot
+The system supports multiple Telegram bots to post into your destination channels.
+
+🎯 Why Multi-Bot?
+Avoid rate limits
+
+Isolate token bans
+
+Assign different bot identity per pair
+
+🛠 Features:
+Post new messages to channels
+
+Edit or delete if source changes
+
+Configurable per pair
+
+🔧 Setup:
+Store tokens in your .env file or use pairs.json:
+
+json
+Copy
+Edit
+"bot_token": "123456:ABCDEF...",
+🧠 Trap Detection & Auto-Pause Logic
+AutoForwardX includes a flexible trap defense system.
+
+🧪 Trap Types:
+Text traps: / *, 1, leak, trap
+
+Image traps: detected by OCR or MD5 hash
+
+Edit traps: messages edited 3+ times
+
+🔧 Behavior:
+If traps exceed threshold (e.g., 3), the pair is auto-paused for 2–3 minutes
+
+Admins receive a Telegram alert
+
+System auto-resumes after cooldown
+
+⚙️ Webhook Management
+Each pair is assigned a Discord Webhook URL:
+
+Managed in Web UI (form or table view)
+
+One webhook per Discord channel
+
+Stored in pairs.json:
+
+json
+Copy
+Edit
+"discord_webhook": "https://discord.com/api/webhooks/..."
+📝 Blocklist Scope: Global vs Per-Pair
+Blocklists are defined in blocklist.json.
+
+🌐 Global Blocklist:
+json
+Copy
+Edit
+"global_blocklist": {
+  "text": ["trap", "/ *"],
+  "images": ["ab12cd34ef..."]
+}
+🎯 Per-Pair Blocklist:
+json
+Copy
+Edit
+"pair_blocklist": {
+  "GBPUSD": {
+    "text": ["1", "signal leaked"],
+    "images": ["zz99yy88..."]
+  }
+}
+🔧 Merging Logic:
+The system merges both global and pair blocklists at runtime
+
+If a text/image appears in either → it's blocked
+
+📲 Telegram Admin Bot
+A dedicated Telegram bot provides inline admin control.
+
+💬 Features:
+[⏸ Pause Pair]
+
+[▶ Resume Pair]
+
+[📋 Show Blocklist]
+
+[➕ Add Word]
+
+[❌ Remove Word]
+
+📢 Notifications:
+Trap triggered
+
+Pair auto-paused
+
+Session OTP expired
+
+🔧 Environment Config:
+env
+Copy
+Edit
+ADMIN_CHAT_ID=123456789
+ADMIN_BOT_TOKEN=123456:ABCDEF...
+🔄 Message Flow: Telegram → Discord → Telegram
+🔁 End-to-End Lifecycle:
+Userbot reads new message from source Telegram channel
+
+Message is sent to Discord Webhook
+
+Discord Bot monitors webhook channel:
+
+AI rewrite
+
+Trap detection
+
+Edit/delete tracking
+
+Cleaned message is sent to Telegram Posting Bot
+
+If trap is detected → Admin Bot is notified + pair is paused
+
+If original Telegram message is edited/deleted → change is synced to destination
+
+🔁 Message ID Mapping:
+Stored in message_map.json:
+
+json
+Copy
+Edit
+{
+  "discord_msg_id": "abc123",
+  "telegram_msg_id": 456,
+  "pair": "GBPUSD"
+}

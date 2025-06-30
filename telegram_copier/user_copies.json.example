@@ -1,0 +1,28 @@
+{
+  "users": [
+    {
+      "user_id": "sunil",
+      "session_file": "sessions/sunil_1.session",
+      "pairs": [
+        {
+          "source": "@vip_signals_1",
+          "destination": "@sunil_copy_1"
+        },
+        {
+          "source": "@premium_trading",
+          "destination": "@sunil_copy_2"
+        }
+      ]
+    },
+    {
+      "user_id": "trader_joe",
+      "session_file": "sessions/joe_1.session",
+      "pairs": [
+        {
+          "source": "@premium_fx",
+          "destination": "@copy_fxjoe"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "gold_session_1": {
+    "phone": "+91xxxxxxxxxx",
+    "session_file": "gold_session_1.session",
+    "status": "active",
+    "created_at": "2025-06-30T14:49:42.000Z",
+    "last_active": "2025-06-30T14:49:42.000Z"
+  },
+  "gold_session_2": {
+    "phone": "+44xxxxxxxxxx", 
+    "session_file": "gold_session_2.session",
+    "status": "active",
+    "created_at": "2025-06-30T14:49:42.000Z",
+    "last_active": "2025-06-30T14:49:42.000Z"
+  }
+}

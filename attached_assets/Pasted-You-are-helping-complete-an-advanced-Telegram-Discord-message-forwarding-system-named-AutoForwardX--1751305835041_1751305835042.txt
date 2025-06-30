@@ -1,0 +1,59 @@
+You are helping complete an advanced Telegram-Discord message forwarding system named AutoForwardX. The system is 85% complete.
+
+Please implement the remaining missing backend functions and core logic as described below:
+
+---
+
+🚦 Process Management (Critical)
+- Implement Python subprocess control logic to:
+  - Start a component: userbot, poster, discord_bot
+  - Stop a component by PID or name
+  - Check process health/status
+- Return PID and status
+- Store tracking data in process_map.json or in memory
+
+API to build:
+- POST /api/start/:component
+- POST /api/stop/:component
+- GET /api/status/:component
+
+Use `asyncio.create_subprocess_exec()` or `multiprocessing`.
+
+---
+
+📤 Telegram Poster: Edit/Delete Sync (Critical)
+In the TelegramPoster class:
+- Implement `edit_telegram_message(chat_id, message_id, new_text, format)` using Pyrogram
+- Implement `delete_telegram_message(chat_id, message_id)` using Pyrogram
+- Make sure edit/delete respects Telegram Markdown/HTML parsing
+- Handle errors if message is already deleted or bot is not admin
+- Load message mapping from message_map.json to perform lookup
+
+---
+
+🧠 Retry and Error Handling (Important)
+- Wrap all Telegram and Discord API calls with retry logic (e.g. 3 attempts, exponential backoff)
+- On trap detection error, log clearly but do not crash
+- Handle all network or timeout exceptions with fallback logging
+
+Create a `retry_util.py` or decorator-based retry function
+
+---
+
+🔐 Secure Environment and Config Handling (Important)
+- Validate environment variables: TG_API_ID, API_HASH, BOT_TOKENS
+- Add config validation using `Pydantic` for sessions.json, pairs.json, blocklist.json
+- Mask sensitive keys in logs
+- Optional: rate limit OTP/session APIs to avoid abuse
+
+---
+
+📋 Bonus (Optional)
+- Create log handler to store all runtime logs per process
+- Add unit tests for new TelegramPoster functions
+- Add structured logging using Python logging or `loguru`
+
+---
+
+Output clean and modular code for each part.
+Use async where applicable and type-hint all functions.
