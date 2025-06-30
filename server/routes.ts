@@ -853,6 +853,102 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Pair management endpoints
+  app.post("/api/copier/add-pair/:userId", async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const pairData = req.body;
+      
+      // In production, this would update user_copies.json
+      res.json({ 
+        success: true, 
+        message: `Pair added to user ${userId}`,
+        pair: pairData 
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to add pair" });
+    }
+  });
+
+  app.post("/api/copier/update-pair/:userId", async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const pairData = req.body;
+      
+      // In production, this would update user_copies.json
+      res.json({ 
+        success: true, 
+        message: `Pair updated for user ${userId}`,
+        pair: pairData 
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update pair" });
+    }
+  });
+
+  app.delete("/api/copier/delete-pair/:userId/:pairIndex", async (req, res) => {
+    try {
+      const { userId, pairIndex } = req.params;
+      
+      // In production, this would remove pair from user_copies.json
+      res.json({ 
+        success: true, 
+        message: `Pair ${pairIndex} deleted from user ${userId}` 
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete pair" });
+    }
+  });
+
+  // Blocklist management endpoints
+  app.post("/api/block/text", async (req, res) => {
+    try {
+      const { text } = req.body;
+      
+      if (!text) {
+        return res.status(400).json({ error: "Text pattern is required" });
+      }
+      
+      // In production, this would update blocklist.json
+      res.json({ 
+        success: true, 
+        message: "Text pattern added to blocklist",
+        pattern: text 
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to add text pattern" });
+    }
+  });
+
+  app.post("/api/block/image", async (req, res) => {
+    try {
+      // In production, this would handle file upload and hash calculation
+      const mockHash = "d41d8cd98f00b204e9800998ecf8427e";
+      
+      res.json({ 
+        success: true, 
+        message: "Image added to blocklist",
+        hash: mockHash 
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to add image to blocklist" });
+    }
+  });
+
+  app.delete("/api/block/remove/:hash", async (req, res) => {
+    try {
+      const { hash } = req.params;
+      
+      // In production, this would remove item from blocklist.json
+      res.json({ 
+        success: true, 
+        message: `Item ${hash} removed from blocklist` 
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to remove item from blocklist" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

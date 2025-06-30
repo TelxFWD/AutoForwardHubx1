@@ -71,6 +71,9 @@ export default function TelXPage() {
   const [showAddUser, setShowAddUser] = useState(false);
   const [showAddPair, setShowAddPair] = useState(false);
   const [showImageUpload, setShowImageUpload] = useState(false);
+  const [showEditPair, setShowEditPair] = useState(false);
+  const [editingPair, setEditingPair] = useState<any>(null);
+  const [showBlocklistManager, setShowBlocklistManager] = useState(false);
   const [copierStatus, setCopierStatus] = useState<"running" | "stopped">("stopped");
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -141,6 +144,79 @@ export default function TelXPage() {
       toast({ title: "Success", description: "User deleted successfully" });
       queryClient.invalidateQueries({ queryKey: ['/api/copier/users'] });
       setSelectedUser(null);
+    },
+  });
+
+  // Pair management mutations
+  const addPairMutation = useMutation({
+    mutationFn: (pairData: any) => fetch(`/api/copier/add-pair/${selectedUser}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(pairData),
+    }).then(res => res.json()),
+    onSuccess: () => {
+      toast({ title: "Success", description: "Pair added successfully" });
+      queryClient.invalidateQueries({ queryKey: ['/api/copier/users'] });
+      setShowAddPair(false);
+    },
+  });
+
+  const updatePairMutation = useMutation({
+    mutationFn: (pairData: any) => fetch(`/api/copier/update-pair/${selectedUser}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(pairData),
+    }).then(res => res.json()),
+    onSuccess: () => {
+      toast({ title: "Success", description: "Pair updated successfully" });
+      queryClient.invalidateQueries({ queryKey: ['/api/copier/users'] });
+      setShowEditPair(false);
+      setEditingPair(null);
+    },
+  });
+
+  const deletePairMutation = useMutation({
+    mutationFn: (pairIndex: number) => fetch(`/api/copier/delete-pair/${selectedUser}/${pairIndex}`, {
+      method: 'DELETE',
+    }).then(res => res.json()),
+    onSuccess: () => {
+      toast({ title: "Success", description: "Pair deleted successfully" });
+      queryClient.invalidateQueries({ queryKey: ['/api/copier/users'] });
+    },
+  });
+
+  // Blocklist mutations
+  const addBlockedTextMutation = useMutation({
+    mutationFn: (text: string) => fetch('/api/block/text', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text }),
+    }).then(res => res.json()),
+    onSuccess: () => {
+      toast({ title: "Success", description: "Text pattern added to blocklist" });
+      queryClient.invalidateQueries({ queryKey: ['/api/block/images'] });
+    },
+  });
+
+  const addBlockedImageMutation = useMutation({
+    mutationFn: (formData: FormData) => fetch('/api/block/image', {
+      method: 'POST',
+      body: formData,
+    }).then(res => res.json()),
+    onSuccess: () => {
+      toast({ title: "Success", description: "Image added to blocklist" });
+      queryClient.invalidateQueries({ queryKey: ['/api/block/images'] });
+      setShowImageUpload(false);
+    },
+  });
+
+  const removeBlockedItemMutation = useMutation({
+    mutationFn: (hash: string) => fetch(`/api/block/remove/${hash}`, {
+      method: 'DELETE',
+    }).then(res => res.json()),
+    onSuccess: () => {
+      toast({ title: "Success", description: "Item removed from blocklist" });
+      queryClient.invalidateQueries({ queryKey: ['/api/block/images'] });
     },
   });
 
@@ -224,7 +300,7 @@ export default function TelXPage() {
     </Card>
   );
 
-  const PairCard = ({ pair, userId }: { pair: Pair; userId: string }) => (
+  const PairCard = ({ pair, userId, pairIndex }: { pair: Pair; userId: string; pairIndex: number }) => (
     <Card>
       <CardHeader className="pb-3">
         <CardTitle className="text-md flex items-center gap-2">
@@ -260,11 +336,26 @@ export default function TelXPage() {
           )}
         </div>
         <div className="flex gap-2 mt-3">
-          <Button size="sm" variant="outline">
+          <Button 
+            size="sm" 
+            variant="outline"
+            onClick={() => {
+              setEditingPair({ ...pair, index: pairIndex });
+              setShowEditPair(true);
+            }}
+          >
             <Edit3 className="w-4 h-4 mr-1" />
             Edit
           </Button>
-          <Button size="sm" variant="destructive">
+          <Button 
+            size="sm" 
+            variant="destructive"
+            onClick={() => {
+              if (confirm('Are you sure you want to delete this pair?')) {
+                deletePairMutation.mutate(pairIndex);
+              }
+            }}
+          >
             <Trash2 className="w-4 h-4" />
           </Button>
         </div>
@@ -383,6 +474,350 @@ export default function TelXPage() {
     );
   };
 
+  const AddPairDialog = () => {
+    const [source, setSource] = useState("");
+    const [destination, setDestination] = useState("");
+    const [removeMentions, setRemoveMentions] = useState(true);
+    const [headerPatterns, setHeaderPatterns] = useState("");
+    const [footerPatterns, setFooterPatterns] = useState("");
+    const [loading, setLoading] = useState(false);
+
+    const handleSubmit = async () => {
+      if (!source || !destination || !selectedUser) return;
+      
+      setLoading(true);
+      try {
+        const pairData = {
+          source,
+          destination,
+          strip_rules: {
+            remove_mentions: removeMentions,
+            header_patterns: headerPatterns.split(',').map(p => p.trim()).filter(p => p),
+            footer_patterns: footerPatterns.split(',').map(p => p.trim()).filter(p => p)
+          }
+        };
+        
+        await addPairMutation.mutateAsync(pairData);
+        
+        // Reset form
+        setSource("");
+        setDestination("");
+        setRemoveMentions(true);
+        setHeaderPatterns("");
+        setFooterPatterns("");
+      } catch (error: any) {
+        toast({ title: "Error", description: error.message, variant: "destructive" });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    return (
+      <Dialog open={showAddPair} onOpenChange={setShowAddPair}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add New Pair</DialogTitle>
+            <DialogDescription>
+              Create a new forwarding pair for {selectedUser}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="source">Source Channel</Label>
+              <Input
+                id="source"
+                placeholder="@source_channel or -1001234567890"
+                value={source}
+                onChange={(e) => setSource(e.target.value)}
+              />
+            </div>
+            <div>
+              <Label htmlFor="destination">Destination Channel</Label>
+              <Input
+                id="destination"
+                placeholder="@destination_channel or -1001234567890"
+                value={destination}
+                onChange={(e) => setDestination(e.target.value)}
+              />
+            </div>
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="removeMentions"
+                checked={removeMentions}
+                onCheckedChange={setRemoveMentions}
+              />
+              <Label htmlFor="removeMentions">Remove @mentions</Label>
+            </div>
+            <div>
+              <Label htmlFor="headerPatterns">Header Patterns (comma-separated)</Label>
+              <Input
+                id="headerPatterns"
+                placeholder="^#\w+, ^(⭐|🔥|VIP|ENTRY)\b"
+                value={headerPatterns}
+                onChange={(e) => setHeaderPatterns(e.target.value)}
+              />
+            </div>
+            <div>
+              <Label htmlFor="footerPatterns">Footer Patterns (comma-separated)</Label>
+              <Input
+                id="footerPatterns"
+                placeholder="shared by .*, auto copy.*"
+                value={footerPatterns}
+                onChange={(e) => setFooterPatterns(e.target.value)}
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setShowAddPair(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleSubmit} disabled={loading || !source || !destination}>
+                {loading ? <RefreshCw className="w-4 h-4 animate-spin mr-2" /> : null}
+                Add Pair
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  };
+
+  const EditPairDialog = () => {
+    const [source, setSource] = useState(editingPair?.source || "");
+    const [destination, setDestination] = useState(editingPair?.destination || "");
+    const [removeMentions, setRemoveMentions] = useState(editingPair?.strip_rules?.remove_mentions || true);
+    const [headerPatterns, setHeaderPatterns] = useState(editingPair?.strip_rules?.header_patterns?.join(', ') || "");
+    const [footerPatterns, setFooterPatterns] = useState(editingPair?.strip_rules?.footer_patterns?.join(', ') || "");
+    const [loading, setLoading] = useState(false);
+
+    const handleSubmit = async () => {
+      if (!source || !destination || !selectedUser || !editingPair) return;
+      
+      setLoading(true);
+      try {
+        const pairData = {
+          index: editingPair.index,
+          source,
+          destination,
+          strip_rules: {
+            remove_mentions: removeMentions,
+            header_patterns: headerPatterns.split(',').map(p => p.trim()).filter(p => p),
+            footer_patterns: footerPatterns.split(',').map(p => p.trim()).filter(p => p)
+          }
+        };
+        
+        await updatePairMutation.mutateAsync(pairData);
+      } catch (error: any) {
+        toast({ title: "Error", description: error.message, variant: "destructive" });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    return (
+      <Dialog open={showEditPair} onOpenChange={setShowEditPair}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Pair</DialogTitle>
+            <DialogDescription>
+              Modify forwarding pair for {selectedUser}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="editSource">Source Channel</Label>
+              <Input
+                id="editSource"
+                placeholder="@source_channel or -1001234567890"
+                value={source}
+                onChange={(e) => setSource(e.target.value)}
+              />
+            </div>
+            <div>
+              <Label htmlFor="editDestination">Destination Channel</Label>
+              <Input
+                id="editDestination"
+                placeholder="@destination_channel or -1001234567890"
+                value={destination}
+                onChange={(e) => setDestination(e.target.value)}
+              />
+            </div>
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="editRemoveMentions"
+                checked={removeMentions}
+                onCheckedChange={setRemoveMentions}
+              />
+              <Label htmlFor="editRemoveMentions">Remove @mentions</Label>
+            </div>
+            <div>
+              <Label htmlFor="editHeaderPatterns">Header Patterns (comma-separated)</Label>
+              <Input
+                id="editHeaderPatterns"
+                placeholder="^#\w+, ^(⭐|🔥|VIP|ENTRY)\b"
+                value={headerPatterns}
+                onChange={(e) => setHeaderPatterns(e.target.value)}
+              />
+            </div>
+            <div>
+              <Label htmlFor="editFooterPatterns">Footer Patterns (comma-separated)</Label>
+              <Input
+                id="editFooterPatterns"
+                placeholder="shared by .*, auto copy.*"
+                value={footerPatterns}
+                onChange={(e) => setFooterPatterns(e.target.value)}
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setShowEditPair(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleSubmit} disabled={loading || !source || !destination}>
+                {loading ? <RefreshCw className="w-4 h-4 animate-spin mr-2" /> : null}
+                Update Pair
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  };
+
+  const BlocklistManagerDialog = () => {
+    const [newTextPattern, setNewTextPattern] = useState("");
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const [loading, setLoading] = useState(false);
+
+    const handleAddText = async () => {
+      if (!newTextPattern.trim()) return;
+      
+      setLoading(true);
+      try {
+        await addBlockedTextMutation.mutateAsync(newTextPattern.trim());
+        setNewTextPattern("");
+      } catch (error: any) {
+        toast({ title: "Error", description: error.message, variant: "destructive" });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    const handleAddImage = async () => {
+      if (!selectedFile) return;
+      
+      setLoading(true);
+      try {
+        const formData = new FormData();
+        formData.append('image', selectedFile);
+        await addBlockedImageMutation.mutateAsync(formData);
+        setSelectedFile(null);
+      } catch (error: any) {
+        toast({ title: "Error", description: error.message, variant: "destructive" });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    return (
+      <Dialog open={showBlocklistManager} onOpenChange={setShowBlocklistManager}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Blocklist Manager</DialogTitle>
+            <DialogDescription>
+              Manage blocked text patterns and images
+            </DialogDescription>
+          </DialogHeader>
+          
+          <Tabs defaultValue="text" className="space-y-4">
+            <TabsList>
+              <TabsTrigger value="text">Text Patterns</TabsTrigger>
+              <TabsTrigger value="images">Images</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="text" className="space-y-4">
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Enter text pattern or regex (e.g., 'trap', '/ *', '^leak')"
+                  value={newTextPattern}
+                  onChange={(e) => setNewTextPattern(e.target.value)}
+                />
+                <Button onClick={handleAddText} disabled={loading || !newTextPattern.trim()}>
+                  {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                </Button>
+              </div>
+              
+              <div className="space-y-2">
+                <h4 className="font-medium">Current Text Patterns:</h4>
+                <div className="grid gap-2">
+                  {/* Mock text patterns - in production, fetch from API */}
+                  {["/ *", "1", "leak", "trap", "edit this"].map((pattern, idx) => (
+                    <div key={idx} className="flex items-center justify-between bg-gray-50 p-2 rounded">
+                      <code className="text-sm">{pattern}</code>
+                      <Button 
+                        size="sm" 
+                        variant="destructive"
+                        onClick={() => removeBlockedItemMutation.mutate(pattern)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="images" className="space-y-4">
+              <div className="flex gap-2">
+                <Input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                />
+                <Button onClick={handleAddImage} disabled={loading || !selectedFile}>
+                  {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                </Button>
+              </div>
+              
+              <div className="space-y-2">
+                <h4 className="font-medium">Blocked Images:</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {(blockedImages as any[]).map((image: any) => (
+                    <div key={image.hash} className="border rounded-lg p-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Image className="w-4 h-4" />
+                          <span className="text-sm font-medium">{image.filename}</span>
+                        </div>
+                        <Button 
+                          size="sm" 
+                          variant="destructive"
+                          onClick={() => removeBlockedItemMutation.mutate(image.hash)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1">
+                        Hash: {image.hash.substring(0, 20)}...
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        Blocked: {new Date(image.blocked_at).toLocaleDateString()}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </TabsContent>
+          </Tabs>
+          
+          <div className="flex justify-end">
+            <Button variant="outline" onClick={() => setShowBlocklistManager(false)}>
+              Close
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  };
+
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
@@ -492,14 +927,20 @@ export default function TelXPage() {
             <div className="space-y-4">
               <div className="flex justify-between items-center">
                 <h3 className="text-lg font-medium">Pairs for {selectedUser}</h3>
-                <Button onClick={() => setShowAddPair(true)}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Pair
-                </Button>
+                <div className="flex gap-2">
+                  <Button onClick={() => setShowBlocklistManager(true)} variant="outline">
+                    <Shield className="w-4 h-4 mr-2" />
+                    Manage Blocklist
+                  </Button>
+                  <Button onClick={() => setShowAddPair(true)}>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Pair
+                  </Button>
+                </div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {users.find((u: User) => u.user_id === selectedUser)?.pairs.map((pair, idx) => (
-                  <PairCard key={idx} pair={pair} userId={selectedUser} />
+                {(users as any[]).find((u: User) => u.user_id === selectedUser)?.pairs.map((pair: any, idx: number) => (
+                  <PairCard key={idx} pair={pair} userId={selectedUser} pairIndex={idx} />
                 ))}
               </div>
             </div>
@@ -579,6 +1020,9 @@ export default function TelXPage() {
       </Tabs>
 
       <AddUserDialog />
+      <AddPairDialog />
+      <EditPairDialog />
+      <BlocklistManagerDialog />
     </div>
   );
 }

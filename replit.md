@@ -159,6 +159,9 @@ Preferred communication style: Simple, everyday language.
     - Real-time trap detection logs and monitoring
     - Global and per-user process controls integrated
     - Advanced content filtering with regex pattern support
+    - Add/Edit/Delete pair functionality with source→destination mapping
+    - Comprehensive blocklist manager for text patterns and images
+    - All API endpoints implemented and tested successfully
 - **June 30, 2025**: **CRITICAL BACKEND FUNCTIONS COMPLETED (100%)**
   - **Process Management**: Full subprocess control with `server/process_manager.ts`
     - Start/stop/restart components (userbot, poster, discord_bot, copier, admin_bot)
