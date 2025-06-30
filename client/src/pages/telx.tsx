@@ -96,6 +96,11 @@ export default function TelXPage() {
     refetchInterval: 5000,
   });
 
+  // Type-safe data
+  const typedUsers = users as User[];
+  const typedBlockedImages = blockedImages as BlockedImage[];
+  const typedTrapLogs = trapLogs as TrapLog[];
+
   // Start/Stop Copier Mutations
   const startCopierMutation = useMutation({
     mutationFn: () => fetch('/api/start/copier', { method: 'POST' }).then(res => res.json()),
@@ -492,8 +497,8 @@ export default function TelXPage() {
           destination,
           strip_rules: {
             remove_mentions: removeMentions,
-            header_patterns: headerPatterns.split(',').map(p => p.trim()).filter(p => p),
-            footer_patterns: footerPatterns.split(',').map(p => p.trim()).filter(p => p)
+            header_patterns: headerPatterns.split(',').map((p: string) => p.trim()).filter((p: string) => p),
+            footer_patterns: footerPatterns.split(',').map((p: string) => p.trim()).filter((p: string) => p)
           }
         };
         
@@ -600,8 +605,8 @@ export default function TelXPage() {
           destination,
           strip_rules: {
             remove_mentions: removeMentions,
-            header_patterns: headerPatterns.split(',').map(p => p.trim()).filter(p => p),
-            footer_patterns: footerPatterns.split(',').map(p => p.trim()).filter(p => p)
+            header_patterns: headerPatterns.split(',').map((p: string) => p.trim()).filter((p: string) => p),
+            footer_patterns: footerPatterns.split(',').map((p: string) => p.trim()).filter((p: string) => p)
           }
         };
         
@@ -819,64 +824,108 @@ export default function TelXPage() {
   };
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">TelX - Telegram Copier</h1>
-          <p className="text-gray-500 mt-1">Multi-user Telegram-to-Telegram message forwarding</p>
-        </div>
-        <div className="flex gap-3">
-          <Button
-            onClick={() => setShowAddUser(true)}
-            className="bg-primary text-white"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Add User Session
-          </Button>
-          <Button
-            onClick={() => queryClient.invalidateQueries({ queryKey: ['/api/copier/users'] })}
-            variant="outline"
-          >
-            <RefreshCw className="w-4 h-4 mr-2" />
-            Refresh
-          </Button>
-        </div>
-      </div>
-
-      {/* Global Controls */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Settings className="w-5 h-5" />
-            Global Controls
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex gap-3">
-            <Button
-              onClick={() => startCopierMutation.mutate()}
-              disabled={copierStatus === "running" || startCopierMutation.isPending}
-              className="bg-green-600 hover:bg-green-700"
-            >
-              <Play className="w-4 h-4 mr-2" />
-              Start Copier
-            </Button>
-            <Button
-              onClick={() => stopCopierMutation.mutate()}
-              disabled={copierStatus === "stopped" || stopCopierMutation.isPending}
-              variant="destructive"
-            >
-              <Pause className="w-4 h-4 mr-2" />
-              Stop Copier
-            </Button>
-            <Badge variant={copierStatus === "running" ? "default" : "secondary"} className="px-3 py-1">
-              <Activity className="w-4 h-4 mr-1" />
-              {copierStatus === "running" ? "Running" : "Stopped"}
-            </Badge>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
+      <div className="p-6 space-y-6">
+        {/* Enhanced Header */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                TelX - Telegram Copier
+              </h1>
+              <p className="text-gray-600 dark:text-gray-300 mt-2 text-lg">
+                Advanced multi-user Telegram-to-Telegram message forwarding with AI-powered content filtering
+              </p>
+              <div className="flex items-center gap-4 mt-3">
+                <Badge variant="secondary" className="px-3 py-1">
+                  <Users className="w-4 h-4 mr-1" />
+                  {typedUsers.length} Active Users
+                </Badge>
+                <Badge variant="secondary" className="px-3 py-1">
+                  <Shield className="w-4 h-4 mr-1" />
+                  {typedBlockedImages.length} Blocked Items
+                </Badge>
+                <Badge variant={copierStatus === "running" ? "default" : "secondary"} className="px-3 py-1">
+                  <Activity className="w-4 h-4 mr-1" />
+                  {copierStatus === "running" ? "System Online" : "System Offline"}
+                </Badge>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <Button
+                onClick={() => setShowBlocklistManager(true)}
+                variant="outline"
+                className="bg-orange-50 hover:bg-orange-100 border-orange-200 text-orange-700"
+              >
+                <Shield className="w-4 h-4 mr-2" />
+                Blocklist Manager
+              </Button>
+              <Button
+                onClick={() => setShowAddUser(true)}
+                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Add User Session
+              </Button>
+              <Button
+                onClick={() => queryClient.invalidateQueries({ queryKey: ['/api/copier/users'] })}
+                variant="outline"
+                className="bg-gray-50 hover:bg-gray-100"
+              >
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Refresh
+              </Button>
+            </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+
+        {/* Enhanced Global Controls */}
+        <Card className="bg-white dark:bg-gray-800 shadow-lg border-0">
+          <CardHeader className="bg-gradient-to-r from-green-50 to-blue-50 dark:from-gray-700 dark:to-gray-600 rounded-t-lg">
+            <CardTitle className="flex items-center gap-2 text-gray-800 dark:text-white">
+              <Settings className="w-5 h-5" />
+              Global System Controls
+            </CardTitle>
+            <CardDescription className="text-gray-600 dark:text-gray-300">
+              Manage the entire copier system and monitor real-time status
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="p-6">
+            <div className="flex flex-wrap gap-4 items-center">
+              <Button
+                onClick={() => startCopierMutation.mutate()}
+                disabled={copierStatus === "running" || startCopierMutation.isPending}
+                className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white shadow-lg px-6 py-2"
+              >
+                {startCopierMutation.isPending ? (
+                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Play className="w-4 h-4 mr-2" />
+                )}
+                Start Global Copier
+              </Button>
+              <Button
+                onClick={() => stopCopierMutation.mutate()}
+                disabled={copierStatus === "stopped" || stopCopierMutation.isPending}
+                className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white shadow-lg px-6 py-2"
+              >
+                {stopCopierMutation.isPending ? (
+                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Pause className="w-4 h-4 mr-2" />
+                )}
+                Stop Global Copier
+              </Button>
+              <div className="flex items-center gap-2 ml-4">
+                <div className={`w-3 h-3 rounded-full ${copierStatus === "running" ? "bg-green-500 animate-pulse" : "bg-gray-400"}`}></div>
+                <Badge variant={copierStatus === "running" ? "default" : "secondary"} className="px-4 py-2 text-sm">
+                  <Activity className="w-4 h-4 mr-1" />
+                  System {copierStatus === "running" ? "Online" : "Offline"}
+                </Badge>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
       <Tabs defaultValue="sessions" className="space-y-6">
         <TabsList>
@@ -901,7 +950,7 @@ export default function TelXPage() {
                 </Card>
               ))}
             </div>
-          ) : users.length === 0 ? (
+          ) : typedUsers.length === 0 ? (
             <Card>
               <CardContent className="text-center py-8">
                 <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
@@ -915,7 +964,7 @@ export default function TelXPage() {
             </Card>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {users.map((user: User) => (
+              {typedUsers.map((user: User) => (
                 <UserSessionCard key={user.user_id} user={user} />
               ))}
             </div>
@@ -939,7 +988,7 @@ export default function TelXPage() {
                 </div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {(users as any[]).find((u: User) => u.user_id === selectedUser)?.pairs.map((pair: any, idx: number) => (
+                {typedUsers.find((u: User) => u.user_id === selectedUser)?.pairs.map((pair: Pair, idx: number) => (
                   <PairCard key={idx} pair={pair} userId={selectedUser} pairIndex={idx} />
                 ))}
               </div>
@@ -964,7 +1013,7 @@ export default function TelXPage() {
             </Button>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {blockedImages.map((image: BlockedImage) => (
+            {typedBlockedImages.map((image: BlockedImage) => (
               <Card key={image.hash}>
                 <CardHeader className="pb-3">
                   <CardTitle className="text-sm flex items-center gap-2">
@@ -996,7 +1045,7 @@ export default function TelXPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {trapLogs.map((log: TrapLog) => (
+                {typedTrapLogs.map((log: TrapLog) => (
                   <div key={log.id} className="border rounded-lg p-3">
                     <div className="flex justify-between items-start">
                       <div className="flex-1">
@@ -1019,10 +1068,11 @@ export default function TelXPage() {
         </TabsContent>
       </Tabs>
 
-      <AddUserDialog />
-      <AddPairDialog />
-      <EditPairDialog />
-      <BlocklistManagerDialog />
+        <AddUserDialog />
+        <AddPairDialog />
+        <EditPairDialog />
+        <BlocklistManagerDialog />
+      </div>
     </div>
   );
 }
