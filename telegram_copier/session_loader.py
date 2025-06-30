@@ -11,6 +11,10 @@ from pathlib import Path
 from telethon import TelegramClient
 from telethon.errors import SessionPasswordNeededError, PhoneNumberInvalidError
 import json
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv(Path(__file__).parent.parent / '.env')
 
 class SessionLoader:
     """Handle Telethon session creation and management"""

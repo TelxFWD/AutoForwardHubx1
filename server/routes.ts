@@ -380,56 +380,168 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ success: false, message: "Phone number required" });
       }
       
-      // Log OTP request
-      await storage.createActivity({
-        type: 'session',
-        message: 'OTP requested',
-        details: `OTP requested for phone: ${phone}`,
-        severity: 'info'
+      // Execute the Python session loader to request OTP
+      const { spawn } = await import('child_process');
+      const pythonProcess = spawn('python3', ['telegram_copier/session_loader.py', '--phone', phone]);
+      
+      let stdout = '';
+      let stderr = '';
+      
+      pythonProcess.stdout.on('data', (data) => {
+        stdout += data.toString();
       });
       
-      res.json({ 
-        success: true, 
-        message: "OTP sent",
-        phone_code_hash: "mock_hash_" + Date.now()
+      pythonProcess.stderr.on('data', (data) => {
+        stderr += data.toString();
       });
+      
+      pythonProcess.on('close', async (code) => {
+        try {
+          if (code === 0 && stdout) {
+            const result = JSON.parse(stdout.trim());
+            
+            // Log OTP request
+            await storage.createActivity({
+              type: 'session',
+              message: `OTP request ${result.status}`,
+              details: `Phone: ${phone}, Status: ${result.status}, Message: ${result.message}`,
+              severity: result.status === 'otp_sent' ? 'info' : 'warning'
+            });
+            
+            if (result.status === 'otp_sent') {
+              res.json({ 
+                success: true, 
+                message: result.message,
+                session_name: result.session_name
+              });
+            } else {
+              res.status(400).json({ 
+                success: false, 
+                message: result.message 
+              });
+            }
+          } else {
+            console.error('Session loader error:', stderr);
+            await storage.createActivity({
+              type: 'session',
+              message: 'OTP request failed',
+              details: `Phone: ${phone}, Error: ${stderr || 'Unknown error'}`,
+              severity: 'error'
+            });
+            
+            res.status(500).json({ 
+              success: false, 
+              message: "Failed to request OTP. Please check your Telegram API credentials." 
+            });
+          }
+        } catch (parseError) {
+          console.error('Failed to parse session loader response:', parseError);
+          res.status(500).json({ 
+            success: false, 
+            message: "Internal error processing OTP request" 
+          });
+        }
+      });
+      
     } catch (error) {
+      console.error('OTP request error:', error);
       res.status(500).json({ success: false, message: "Failed to request OTP" });
     }
   });
 
   app.post("/api/sessions/verify-otp", async (req, res) => {
     try {
-      const { phone, code, phone_code_hash } = req.body;
+      const { phone, code, session_name } = req.body;
       
-      if (!phone || !code || !phone_code_hash) {
+      if (!phone || !code) {
         return res.status(400).json({ 
           success: false, 
-          message: "Phone, code, and phone_code_hash required" 
+          message: "Phone and OTP code required" 
         });
       }
       
-      // Create mock session
-      const session = await storage.createSession({
-        name: `session_${Date.now()}`,
-        phone: phone,
-        sessionFile: `sessions/session_${Date.now()}.session`,
-        status: 'active'
+      // Execute the Python session loader to verify OTP
+      const { spawn } = await import('child_process');
+      const pythonProcess = spawn('python3', ['telegram_copier/session_loader.py', '--phone', phone, '--otp', code, '--session-name', session_name || '']);
+      
+      let stdout = '';
+      let stderr = '';
+      
+      pythonProcess.stdout.on('data', (data) => {
+        stdout += data.toString();
       });
       
-      await storage.createActivity({
-        type: 'session',
-        message: 'Session created',
-        details: `New session created for ${phone}`,
-        severity: 'info'
+      pythonProcess.stderr.on('data', (data) => {
+        stderr += data.toString();
       });
       
-      res.json({ 
-        success: true, 
-        message: "Session created successfully",
-        session_id: session.id
+      pythonProcess.on('close', async (code) => {
+        try {
+          if (code === 0 && stdout) {
+            const result = JSON.parse(stdout.trim());
+            
+            if (result.status === 'success') {
+              // Create session in database
+              const session = await storage.createSession({
+                name: result.session_name,
+                phone: phone,
+                sessionFile: `sessions/${result.session_name}.session`,
+                status: 'active'
+              });
+              
+              // Log session creation
+              await storage.createActivity({
+                type: 'session_connected',
+                message: 'Session authenticated',
+                details: `Session connected for ${result.user_info.first_name} (${phone})`,
+                severity: 'info'
+              });
+              
+              res.json({ 
+                success: true, 
+                message: result.message,
+                session: session,
+                user_info: result.user_info
+              });
+            } else {
+              // Log failed verification
+              await storage.createActivity({
+                type: 'session',
+                message: 'OTP verification failed',
+                details: `Phone: ${phone}, Error: ${result.message}`,
+                severity: 'warning'
+              });
+              
+              res.status(400).json({ 
+                success: false, 
+                message: result.message 
+              });
+            }
+          } else {
+            console.error('Session verification error:', stderr);
+            await storage.createActivity({
+              type: 'session',
+              message: 'OTP verification failed',
+              details: `Phone: ${phone}, Error: ${stderr || 'Unknown error'}`,
+              severity: 'error'
+            });
+            
+            res.status(500).json({ 
+              success: false, 
+              message: "Failed to verify OTP. Please try again." 
+            });
+          }
+        } catch (parseError) {
+          console.error('Failed to parse session verification response:', parseError);
+          res.status(500).json({ 
+            success: false, 
+            message: "Internal error processing OTP verification" 
+          });
+        }
       });
+      
     } catch (error) {
+      console.error('OTP verification error:', error);
       res.status(500).json({ success: false, message: "Failed to verify OTP" });
     }
   });
