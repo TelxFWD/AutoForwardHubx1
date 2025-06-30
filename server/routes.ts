@@ -233,13 +233,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Configuration validation routes
   app.get("/api/config/validate", async (req, res) => {
     try {
-      // For now, return basic validation status
       const status = {
         telegram_api: !!process.env.TELEGRAM_API_ID && !!process.env.TELEGRAM_API_HASH,
         discord_bot: !!process.env.DISCORD_BOT_TOKEN,
         admin_bot: !!process.env.ADMIN_BOT_TOKEN,
         database: !!process.env.DATABASE_URL,
         admin_users: !!process.env.ADMIN_USER_IDS,
+        session_secret: !!process.env.SESSION_SECRET,
         config_files: {
           pairs: true, // We have in-memory data
           sessions: true,
@@ -249,7 +249,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json({ success: true, status });
     } catch (error) {
+      console.error("Configuration validation failed:", error);
       res.status(500).json({ success: false, message: `Configuration validation failed: ${error}` });
+    }
+  });
+
+  // Environment variables management
+  app.get("/api/config/env", async (req, res) => {
+    try {
+      // Return environment variable status (without exposing actual values)
+      const envStatus = {
+        TELEGRAM_API_ID: !!process.env.TELEGRAM_API_ID,
+        TELEGRAM_API_HASH: !!process.env.TELEGRAM_API_HASH,
+        DISCORD_BOT_TOKEN: !!process.env.DISCORD_BOT_TOKEN,
+        ADMIN_BOT_TOKEN: !!process.env.ADMIN_BOT_TOKEN,
+        ADMIN_USER_IDS: !!process.env.ADMIN_USER_IDS,
+        DATABASE_URL: !!process.env.DATABASE_URL,
+        SESSION_SECRET: !!process.env.SESSION_SECRET,
+        WEBHOOK_URL: !!process.env.WEBHOOK_URL,
+      };
+      
+      res.json({ success: true, variables: envStatus });
+    } catch (error) {
+      console.error("Failed to get environment status:", error);
+      res.status(500).json({ success: false, message: "Failed to get environment status" });
     }
   });
 

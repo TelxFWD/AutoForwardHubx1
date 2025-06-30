@@ -10,6 +10,7 @@ import AddPairModal from "@/components/add-pair-modal";
 import AddSessionModal from "@/components/add-session-modal";
 import DiscordWebhookManager from "@/components/discord-webhook-manager";
 import SystemControlPanel from "@/components/system-control-panel";
+import EnvConfig from "@/components/env-config";
 import { Button } from "@/components/ui/button";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -135,6 +136,9 @@ export default function Dashboard({ activeTab = "dashboard" }: DashboardProps) {
 
       case "webhooks":
         return <DiscordWebhookManager />;
+
+      case "settings":
+        return <EnvConfig />;
       
       default:
         return (
