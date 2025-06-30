@@ -2,7 +2,9 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Play, Pause, RefreshCw, AlertTriangle, CheckCircle } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Play, Pause, RefreshCw, AlertTriangle, CheckCircle, Phone, MessageCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -11,6 +13,10 @@ import type { Session } from "@shared/schema";
 export default function SessionControls() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [showOTPForm, setShowOTPForm] = useState(false);
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [otpCode, setOtpCode] = useState("");
+  const [pendingSession, setPendingSession] = useState<string | null>(null);
 
   const { data: sessions = [], isLoading } = useQuery({
     queryKey: ["/api/sessions"],
@@ -31,6 +37,72 @@ export default function SessionControls() {
       toast({
         title: "Error",
         description: "Failed to update session status.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const requestOTPMutation = useMutation({
+    mutationFn: (phone: string) => apiRequest("POST", "/api/sessions/request-otp", { phone }),
+    onSuccess: (data: any) => {
+      if (data.status === "otp_sent") {
+        setPendingSession(data.session_name);
+        toast({
+          title: "OTP Sent",
+          description: data.message,
+        });
+      } else if (data.status === "already_logged_in") {
+        setShowOTPForm(false);
+        setPhoneNumber("");
+        queryClient.invalidateQueries({ queryKey: ["/api/sessions"] });
+        toast({
+          title: "Already Logged In",
+          description: data.message,
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: data.message,
+          variant: "destructive",
+        });
+      }
+    },
+    onError: () => {
+      toast({
+        title: "Failed to send OTP",
+        description: "Could not send OTP. Check phone number format.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const verifyOTPMutation = useMutation({
+    mutationFn: (data: { phone: string; otp: string }) => 
+      apiRequest("POST", "/api/sessions/verify-otp", data),
+    onSuccess: (data: any) => {
+      if (data.status === "success") {
+        setShowOTPForm(false);
+        setPhoneNumber("");
+        setOtpCode("");
+        setPendingSession(null);
+        queryClient.invalidateQueries({ queryKey: ["/api/sessions"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/activities"] });
+        toast({
+          title: "Session Created",
+          description: data.message,
+        });
+      } else {
+        toast({
+          title: "OTP Verification Failed",
+          description: data.message,
+          variant: "destructive",
+        });
+      }
+    },
+    onError: () => {
+      toast({
+        title: "Verification Failed",
+        description: "Could not verify OTP. Please try again.",
         variant: "destructive",
       });
     },
@@ -85,11 +157,90 @@ export default function SessionControls() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="space-y-4">
-          {sessions.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              No sessions configured. Add sessions through the session loader.
+        <div className="space-y-6">
+          {/* Add New Session Form */}
+          <div className="border rounded-lg p-4 bg-gray-50">
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="font-medium">Add New Session</h4>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowOTPForm(!showOTPForm)}
+              >
+                <Phone className="w-4 h-4 mr-2" />
+                {showOTPForm ? "Cancel" : "Add Session"}
+              </Button>
             </div>
+            
+            {showOTPForm && (
+              <div className="space-y-4">
+                {!pendingSession ? (
+                  <div className="space-y-3">
+                    <div>
+                      <Label htmlFor="phone">Phone Number</Label>
+                      <Input
+                        id="phone"
+                        type="tel"
+                        placeholder="+1234567890"
+                        value={phoneNumber}
+                        onChange={(e) => setPhoneNumber(e.target.value)}
+                      />
+                    </div>
+                    <Button
+                      onClick={() => requestOTPMutation.mutate(phoneNumber)}
+                      disabled={!phoneNumber || requestOTPMutation.isPending}
+                      className="w-full"
+                    >
+                      <MessageCircle className="w-4 h-4 mr-2" />
+                      {requestOTPMutation.isPending ? "Sending OTP..." : "Send OTP"}
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="text-sm text-green-600 font-medium">
+                      OTP sent to {phoneNumber}
+                    </div>
+                    <div>
+                      <Label htmlFor="otp">Enter OTP Code</Label>
+                      <Input
+                        id="otp"
+                        type="text"
+                        placeholder="12345"
+                        value={otpCode}
+                        onChange={(e) => setOtpCode(e.target.value)}
+                        maxLength={6}
+                      />
+                    </div>
+                    <div className="flex space-x-2">
+                      <Button
+                        onClick={() => verifyOTPMutation.mutate({ phone: phoneNumber, otp: otpCode })}
+                        disabled={!otpCode || verifyOTPMutation.isPending}
+                        className="flex-1"
+                      >
+                        {verifyOTPMutation.isPending ? "Verifying..." : "Verify OTP"}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setPendingSession(null);
+                          setOtpCode("");
+                        }}
+                      >
+                        Resend
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Existing Sessions */}
+          <div className="space-y-4">
+            {sessions.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                No sessions configured. Add sessions through the session loader.
+              </div>
           ) : (
             sessions.map((session: Session) => (
               <div
@@ -150,6 +301,7 @@ export default function SessionControls() {
               </div>
             ))
           )}
+          </div>
         </div>
         
         {sessions.length > 0 && (

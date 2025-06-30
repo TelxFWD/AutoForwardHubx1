@@ -1,0 +1,81 @@
+You are helping finalize the AutoForwardX project — a multi-user Telegram/Discord message forwarding system.
+
+Please do the following tasks carefully and correctly:
+
+---
+
+🔐 FIX: OTP Not Being Sent (High Priority)
+- The current Telethon-based session loader does not send the OTP to Telegram
+- Check:
+  - API_ID and API_HASH are loaded correctly
+  - Telethon client is started with `await client.connect()`
+  - `client.send_code_request(phone)` is called and not skipped
+  - Any errors (like flood wait or invalid number) are caught and logged
+- Return a meaningful response to the UI:
+  - “OTP sent”
+  - “Phone already logged in”
+  - “Error: Phone invalid or banned”
+
+---
+
+👥 IMPLEMENT: Multi-User Project Support
+- Each user should have:
+  - Their own Telegram sessions (e.g., `user_1.session`)
+  - Their own source→destination pairs for TG→TG copy
+  - Separate state control (pause/resume per user)
+- Store user metadata and session mapping in `user_copies.json`
+- Add dynamic session loader that can start all active users
+- Ensure user isolation:
+  - One user cannot affect another
+  - Trap detection applied per user context
+
+---
+
+🧩 ADD: Telegram-to-Telegram Button in Dashboard
+- Add a new button in the web UI:
+  - Label: “Start Telegram Copier”
+  - Function: Trigger Telegram-to-Telegram copier module
+- When clicked:
+  - Sends `POST /api/start/copier`
+  - Starts copier_multi_session.py in background
+- Show active copier sessions in the dashboard
+- Allow pause/resume per copier instance or user
+
+---
+
+✅ VERIFY: All Core Functions Are Working
+
+Please check and complete the following:
+
+1. 🔁 OTP Login Flow:
+   - OTP sent and verified properly
+   - Session stored in `sessions/` folder
+   - Entry created in `sessions.json`
+
+2. 🧠 Trap Detection:
+   - Text, image, edit traps all applied
+   - Proper logging and rejection flow
+
+3. 🧾 Telegram Poster:
+   - `edit_telegram_message()` works via Pyrogram
+   - `delete_telegram_message()` is functional
+   - Format preserved (HTML or Markdown)
+
+4. 🛠 Process Control:
+   - Start/stop/status works via API
+   - PIDs are tracked correctly
+   - Components restartable
+
+5. 👥 Multi-User TG Copier:
+   - Multiple user sessions load in parallel
+   - Messages forwarded with trap handling
+   - Per-user pause/resume works
+
+6. 💬 Admin Bot:
+   - Inline buttons functional
+   - Block text/image works
+   - Trap alerts delivered
+
+---
+
+✅ Clean up logs, use async where required, and type-hint all new methods.

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Play, Pause, Square, RefreshCw, AlertTriangle, CheckCircle } from "lucide-react";
+import { Play, Pause, Square, RefreshCw, AlertTriangle, CheckCircle, MessageSquare } from "lucide-react";
 import type { Pair, SystemStats } from "@shared/schema";
 
 export default function SystemControlPanel() {
@@ -61,6 +61,26 @@ export default function SystemControlPanel() {
       toast({
         title: "Failed to Resume",
         description: "Could not resume all pairs. Please try again.",
+        variant: "destructive",
+      });
+    },
+    onSettled: () => setIsExecutingCommand(false),
+  });
+
+  const startCopierMutation = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/start/copier"),
+    onMutate: () => setIsExecutingCommand(true),
+    onSuccess: (data: any) => {
+      toast({
+        title: "Telegram Copier Started",
+        description: "Multi-user Telegram copier is now running",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/activities"] });
+    },
+    onError: () => {
+      toast({
+        title: "Failed to Start Copier",
+        description: "Could not start Telegram copier. Check configuration.",
         variant: "destructive",
       });
     },
@@ -191,6 +211,25 @@ export default function SystemControlPanel() {
             </span>
           </div>
         )}
+
+        {/* Telegram Copier Control */}
+        <div className="pt-4 border-t">
+          <h4 className="text-sm font-medium text-gray-900 mb-3">Telegram-to-Telegram Copier</h4>
+          <div className="space-y-3">
+            <Button
+              onClick={() => startCopierMutation.mutate()}
+              disabled={isExecutingCommand}
+              className="w-full bg-blue-600 text-white hover:bg-blue-700"
+              size="lg"
+            >
+              <MessageSquare className="w-5 h-5 mr-2" />
+              {startCopierMutation.isPending ? "Starting Copier..." : "Start Telegram Copier"}
+            </Button>
+            <p className="text-sm text-muted-foreground">
+              Starts multi-user Telegram-to-Telegram message copying with trap detection
+            </p>
+          </div>
+        </div>
 
         {/* Advanced Controls */}
         <div className="pt-4 border-t">

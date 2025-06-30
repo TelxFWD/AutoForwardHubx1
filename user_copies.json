@@ -1,0 +1,14 @@
+{
+  "users": [
+    {
+      "user_id": "demo_user",
+      "session_file": "sessions/demo_user.session",
+      "pairs": [
+        {
+          "source": "@demo_source",
+          "destination": "@demo_destination"
+        }
+      ]
+    }
+  ]
+}

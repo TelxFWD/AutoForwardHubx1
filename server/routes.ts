@@ -278,6 +278,194 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Session OTP routes
+  app.post("/api/sessions/request-otp", async (req, res) => {
+    try {
+      const { phone } = req.body;
+      
+      if (!phone) {
+        return res.status(400).json({ success: false, message: "Phone number is required" });
+      }
+      
+      // Import and use SessionLoader
+      const { spawn } = await import("child_process");
+      const process = spawn("python3", [
+        "telegram_copier/session_loader.py",
+        "--phone", phone
+      ], {
+        stdio: ["pipe", "pipe", "pipe"]
+      });
+      
+      let output = "";
+      let error = "";
+      
+      process.stdout.on("data", (data) => {
+        output += data.toString();
+      });
+      
+      process.stderr.on("data", (data) => {
+        error += data.toString();
+      });
+      
+      process.on("close", (code) => {
+        if (code === 0) {
+          try {
+            const result = JSON.parse(output);
+            res.json(result);
+          } catch (e) {
+            res.json({ status: "success", message: output.trim() });
+          }
+        } else {
+          res.status(500).json({ 
+            success: false, 
+            message: error || "Failed to request OTP" 
+          });
+        }
+      });
+      
+    } catch (error) {
+      res.status(500).json({ success: false, message: `OTP request failed: ${error}` });
+    }
+  });
+
+  app.post("/api/sessions/verify-otp", async (req, res) => {
+    try {
+      const { phone, otp } = req.body;
+      
+      if (!phone || !otp) {
+        return res.status(400).json({ success: false, message: "Phone and OTP are required" });
+      }
+      
+      // Import and use SessionLoader
+      const { spawn } = await import("child_process");
+      const process = spawn("python3", [
+        "telegram_copier/session_loader.py",
+        "--phone", phone,
+        "--otp", otp
+      ], {
+        stdio: ["pipe", "pipe", "pipe"]
+      });
+      
+      let output = "";
+      let error = "";
+      
+      process.stdout.on("data", (data) => {
+        output += data.toString();
+      });
+      
+      process.stderr.on("data", (data) => {
+        error += data.toString();
+      });
+      
+      process.on("close", async (code) => {
+        if (code === 0) {
+          try {
+            const result = JSON.parse(output);
+            
+            // If successful, create session in database
+            if (result.status === "success") {
+              try {
+                await storage.createSession({
+                  name: result.session_name,
+                  phone: phone,
+                  sessionFile: `sessions/${result.session_name}.session`,
+                  status: "active"
+                });
+                
+                // Log activity
+                await storage.createActivity({
+                  type: "session_created",
+                  message: `New session created: ${result.session_name}`,
+                  details: `Phone: ${phone}, User: ${result.user_info?.first_name}`,
+                  severity: "success",
+                });
+              } catch (dbError) {
+                console.warn("Session created but not saved to database:", dbError);
+              }
+            }
+            
+            res.json(result);
+          } catch (e) {
+            res.json({ status: "success", message: output.trim() });
+          }
+        } else {
+          res.status(500).json({ 
+            success: false, 
+            message: error || "Failed to verify OTP" 
+          });
+        }
+      });
+      
+    } catch (error) {
+      res.status(500).json({ success: false, message: `OTP verification failed: ${error}` });
+    }
+  });
+
+  // Telegram Copier control routes
+  app.post("/api/start/copier", async (req, res) => {
+    try {
+      // Start the Telegram copier module
+      const { spawn } = await import("child_process");
+      const process = spawn("python3", [
+        "telegram_copier/copier_multi_session.py"
+      ], {
+        stdio: ["pipe", "pipe", "pipe"],
+        detached: true
+      });
+      
+      // Store process info
+      const processInfo = {
+        pid: process.pid,
+        name: "telegram_copier",
+        startTime: new Date().toISOString(),
+        status: "running"
+      };
+      
+      // Log activity
+      await storage.createActivity({
+        type: "copier_started",
+        message: "Telegram copier started",
+        details: `PID: ${process.pid}`,
+        severity: "success",
+      });
+      
+      res.json({ 
+        success: true, 
+        message: "Telegram copier started successfully",
+        process: processInfo
+      });
+      
+    } catch (error) {
+      res.status(500).json({ 
+        success: false, 
+        message: `Failed to start copier: ${error}` 
+      });
+    }
+  });
+
+  app.post("/api/stop/copier", async (req, res) => {
+    try {
+      // For now, just log the stop request
+      await storage.createActivity({
+        type: "copier_stopped",
+        message: "Telegram copier stop requested",
+        details: "Process management to be implemented",
+        severity: "info",
+      });
+      
+      res.json({ 
+        success: true, 
+        message: "Copier stop requested" 
+      });
+      
+    } catch (error) {
+      res.status(500).json({ 
+        success: false, 
+        message: `Failed to stop copier: ${error}` 
+      });
+    }
+  });
+
   // Control routes
   app.post("/api/control/pause-all", async (req, res) => {
     try {

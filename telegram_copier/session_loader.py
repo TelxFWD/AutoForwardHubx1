@@ -27,8 +27,8 @@ class SessionLoader:
         self.sessions_dir = Path("sessions")
         self.sessions_dir.mkdir(exist_ok=True)
     
-    async def create_session(self, phone_number: str, session_name: str = None) -> str:
-        """Create a new Telegram session"""
+    async def request_otp(self, phone_number: str, session_name: str = None) -> dict:
+        """Send OTP to phone number"""
         if not session_name:
             # Generate session name from phone number
             clean_phone = phone_number.replace("+", "").replace("-", "").replace(" ", "")
@@ -38,40 +38,88 @@ class SessionLoader:
         
         try:
             client = TelegramClient(str(session_file), self.api_id, self.api_hash)
-            await client.start(phone=phone_number)
+            await client.connect()
             
-            # Check if user is logged in
+            # Check if already authorized
             if await client.is_user_authorized():
                 user = await client.get_me()
                 await client.disconnect()
-                
-                # Save session metadata
-                await self.save_session_metadata(session_name, phone_number, user)
-                
-                return f"Session created successfully for {user.first_name} ({phone_number})"
-            else:
-                await client.disconnect()
-                return "Failed to authorize user"
+                return {
+                    "status": "already_logged_in",
+                    "message": f"Phone already logged in as {user.first_name}",
+                    "session_name": session_name
+                }
+            
+            # Send OTP request
+            sent = await client.send_code_request(phone_number)
+            await client.disconnect()
+            
+            # Store pending session info
+            pending_session = {
+                "phone": phone_number,
+                "session_name": session_name,
+                "phone_code_hash": sent.phone_code_hash,
+                "timestamp": asyncio.get_event_loop().time()
+            }
+            
+            pending_file = self.sessions_dir / f"{session_name}_pending.json"
+            with open(pending_file, 'w', encoding='utf-8') as f:
+                json.dump(pending_session, f, indent=2)
+            
+            return {
+                "status": "otp_sent",
+                "message": "OTP sent to your phone",
+                "session_name": session_name
+            }
                 
         except PhoneNumberInvalidError:
-            return "Invalid phone number format"
-        except SessionPasswordNeededError:
-            await client.disconnect()
-            return "Two-step verification enabled. Please disable it temporarily."
+            try:
+                await client.disconnect()
+            except:
+                pass
+            return {
+                "status": "error",
+                "message": "Phone number invalid or banned"
+            }
         except Exception as e:
-            return f"Error creating session: {str(e)}"
+            try:
+                await client.disconnect()
+            except:
+                pass
+            return {
+                "status": "error",
+                "message": f"Error sending OTP: {str(e)}"
+            }
     
-    async def verify_otp(self, phone_number: str, otp_code: str, session_name: str = None) -> str:
+    async def verify_otp(self, phone_number: str, otp_code: str, session_name: str = None) -> dict:
         """Verify OTP for session creation"""
         if not session_name:
             clean_phone = phone_number.replace("+", "").replace("-", "").replace(" ", "")
             session_name = f"user_{clean_phone}"
         
         session_file = self.sessions_dir / f"{session_name}.session"
+        pending_file = self.sessions_dir / f"{session_name}_pending.json"
         
         try:
+            # Load pending session data
+            if not pending_file.exists():
+                return {
+                    "status": "error",
+                    "message": "No pending OTP request found. Please request OTP first."
+                }
+            
+            with open(pending_file, 'r', encoding='utf-8') as f:
+                pending_data = json.load(f)
+            
             client = TelegramClient(str(session_file), self.api_id, self.api_hash)
-            await client.start(phone=phone_number, code=otp_code)
+            await client.connect()
+            
+            # Verify OTP using stored phone_code_hash
+            await client.sign_in(
+                phone=phone_number,
+                code=otp_code,
+                phone_code_hash=pending_data["phone_code_hash"]
+            )
             
             if await client.is_user_authorized():
                 user = await client.get_me()
@@ -80,13 +128,41 @@ class SessionLoader:
                 # Save session metadata
                 await self.save_session_metadata(session_name, phone_number, user)
                 
-                return f"OTP verified successfully for {user.first_name}"
+                # Clean up pending file
+                pending_file.unlink()
+                
+                return {
+                    "status": "success",
+                    "message": f"OTP verified successfully for {user.first_name}",
+                    "session_name": session_name,
+                    "user_info": {
+                        "id": user.id,
+                        "first_name": user.first_name,
+                        "username": user.username
+                    }
+                }
             else:
                 await client.disconnect()
-                return "OTP verification failed"
+                return {
+                    "status": "error",
+                    "message": "OTP verification failed"
+                }
                 
+        except SessionPasswordNeededError:
+            await client.disconnect()
+            return {
+                "status": "error",
+                "message": "Two-step verification enabled. Please disable it temporarily."
+            }
         except Exception as e:
-            return f"Error verifying OTP: {str(e)}"
+            try:
+                await client.disconnect()
+            except:
+                pass
+            return {
+                "status": "error",
+                "message": f"Error verifying OTP: {str(e)}"
+            }
     
     async def save_session_metadata(self, session_name: str, phone_number: str, user):
         """Save session metadata to JSON file"""
@@ -170,8 +246,8 @@ async def main():
             result = await loader.verify_otp(args.phone, args.otp, args.session_name)
             print(result)
         elif args.phone:
-            result = await loader.create_session(args.phone, args.session_name)
-            print(result)
+            result = await loader.request_otp(args.phone, args.session_name)
+            print(json.dumps(result, indent=2))
         else:
             parser.print_help()
             
