@@ -6,7 +6,8 @@ import {
   Ban, 
   Activity, 
   Webhook, 
-  Settings 
+  Settings,
+  MessageSquare
 } from "lucide-react";
 
 interface SidebarProps {
@@ -17,6 +18,7 @@ interface SidebarProps {
 export default function Sidebar({ activeView, onViewChange }: SidebarProps) {
   const navigationItems = [
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { id: "telx", label: "TelX", icon: MessageSquare },
     { id: "pairs", label: "Pair Management", icon: Link },
     { id: "sessions", label: "Session Control", icon: Shield },
     { id: "blocklist", label: "Blocklist Manager", icon: Ban },

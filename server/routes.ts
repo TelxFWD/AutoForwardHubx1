@@ -758,6 +758,101 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // TelX-specific API endpoints
+  app.get("/api/copier/users", async (req, res) => {
+    try {
+      // Mock data for now - in production, this would read from user_copies.json
+      const mockUsers = [
+        {
+          user_id: "example_user",
+          session_file: "example_user.session",
+          status: "active",
+          total_pairs: 2,
+          trap_hits: 3,
+          pairs: [
+            {
+              source: "@source_channel",
+              destination: "@dest_channel",
+              strip_rules: {
+                remove_mentions: true,
+                header_patterns: ["^#\\w+", "^(⭐|🔥|VIP|ENTRY)\\b"],
+                footer_patterns: ["shared by .*", "auto copy.*"]
+              }
+            }
+          ]
+        }
+      ];
+      res.json(mockUsers);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch users" });
+    }
+  });
+
+  app.get("/api/block/images", async (req, res) => {
+    try {
+      // Mock data for blocked images
+      const mockImages = [
+        {
+          hash: "d41d8cd98f00b204e9800998ecf8427e",
+          filename: "trap_image.jpg",
+          blocked_at: new Date().toISOString()
+        }
+      ];
+      res.json(mockImages);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch blocked images" });
+    }
+  });
+
+  app.get("/api/logs/traps", async (req, res) => {
+    try {
+      // Mock trap logs
+      const mockLogs = [
+        {
+          id: "1",
+          user_id: "example_user",
+          message_preview: "Suspicious message detected...",
+          trap_type: "text_pattern",
+          timestamp: new Date().toISOString(),
+          source_channel: "@source_channel"
+        }
+      ];
+      res.json(mockLogs);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch trap logs" });
+    }
+  });
+
+  app.post("/api/copier/pause/:userId", async (req, res) => {
+    try {
+      const { userId } = req.params;
+      // In production, this would update paused_users.json
+      res.json({ success: true, message: `User ${userId} paused` });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to pause user" });
+    }
+  });
+
+  app.post("/api/copier/resume/:userId", async (req, res) => {
+    try {
+      const { userId } = req.params;
+      // In production, this would update paused_users.json
+      res.json({ success: true, message: `User ${userId} resumed` });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to resume user" });
+    }
+  });
+
+  app.delete("/api/copier/delete/:userId", async (req, res) => {
+    try {
+      const { userId } = req.params;
+      // In production, this would remove user from user_copies.json
+      res.json({ success: true, message: `User ${userId} deleted` });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete user" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

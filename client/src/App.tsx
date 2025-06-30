@@ -5,12 +5,15 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import Sidebar from "@/components/sidebar";
 import Dashboard from "@/pages/dashboard";
+import TelXPage from "@/pages/telx";
 
 function App() {
   const [activeView, setActiveView] = useState("dashboard");
 
   const renderContent = () => {
     switch (activeView) {
+      case "telx":
+        return <TelXPage />;
       case "dashboard":
       case "pairs":
       case "sessions":

@@ -1,0 +1,100 @@
+
+## 🎯 1. Manages Multi-User Sessions
+- Each user from `user_copies.json` appears as a card
+- Show:
+  - `user_id`
+  - Session status (Active / Paused / Invalid)
+  - Total pairs
+  - Trap hits (count)
+- Buttons:
+  - ➕ Add User Session (with OTP form)
+  - 🔁 Refresh Session Status
+  - 🛑 Delete Session
+
+---
+
+## 🔁 2. Per-User Pair Management
+- Show all source → destination channel pairs for each user
+- Show strip config for each pair (mention removal, patterns)
+- Button: ➕ Add Pair (form with fields):
+  - Source channel
+  - Destination channel
+  - Custom header pattern (comma separated regex)
+  - Custom footer pattern (comma separated regex)
+  - Toggle: Remove Mentions ✅
+
+✅ Data is saved to `user_copies.json`
+
+---
+
+## 🧠 3. Advanced Strip Rules per Pair
+- Display existing strip config
+- Editable fields:
+  - Header Patterns: (comma-separated, editable)
+  - Footer Patterns: (comma-separated, editable)
+  - Mention Removal: toggle switch
+- Save changes via API: `POST /api/copier/update-pair/:user_id`
+
+---
+
+## 🖼 4. Image Blocking via Admin UI
+- New Section: “Blocked Images”
+- Show list of blocked image hashes
+- Button: ➕ Upload New Image
+  - Hash it with MD5/SHA256
+  - Save to `blocklist.json > images`
+  - API: `POST /api/block/image`
+
+---
+
+## 🛠 5. Global & Per-User Controls
+- Global Buttons:
+  - ▶ Start Copier → `POST /api/start/copier`
+  - ⏸ Stop Copier → `POST /api/stop/copier`
+
+- Per-User Buttons:
+  - ▶ Resume
+  - ⏸ Pause
+  - Show current pause status (from `paused_users.json`)
+
+---
+
+## 📋 6. Log & Trap Display
+- Logs Section:
+  - Select user → view tail log (e.g., `/api/logs/copier/:user_id`)
+  - Live refresh every 5s
+- Trap Feed Section:
+  - Show: message preview, trap type, source user, timestamp
+
+---
+
+## ✅ Backend API Requirements
+
+- `POST /api/copier/session/start` — Step 1: Phone
+- `POST /api/copier/session/verify` — Step 2: OTP
+- `GET /api/copier/users` — All sessions + pairs
+- `POST /api/copier/add-pair/:user_id`
+- `POST /api/copier/update-pair/:user_id`
+- `POST /api/block/image` — Accepts image, hashes and stores
+- `POST /api/copier/pause/:user_id`
+- `POST /api/copier/resume/:user_id`
+- `POST /api/start/copier`
+- `POST /api/stop/copier`
+- `GET /api/logs/copier/:user_id`
+
+---
+
+## 🧩 Tech Stack Instructions
+
+- Use Tailwind CSS for layout and toggles
+- Use HTMX for forms, modals, button actions
+- Template engine: Jinja2 or HTML response from FastAPI
+- Optional Alpine.js for client toggles
+
+---
+
+✅ Design Goals:
+- Modular and responsive layout
+- Mobile friendly
+- Pair and session management from one screen
+- Easily extendable for future filters
