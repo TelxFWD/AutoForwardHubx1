@@ -45,7 +45,217 @@ export interface IStorage {
   updateSystemStats(stats: Partial<SystemStats>): Promise<SystemStats>;
 }
 
-// In-memory storage implementation for development
+// Database storage implementation
+export class DatabaseStorage implements IStorage {
+  constructor() {}
+
+  async getUser(id: number): Promise<User | undefined> {
+    if (!db) return undefined;
+    const result = await db.select().from(users).where(eq(users.id, id));
+    return result[0];
+  }
+
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    if (!db) return undefined;
+    const result = await db.select().from(users).where(eq(users.username, username));
+    return result[0];
+  }
+
+  async createUser(user: InsertUser): Promise<User> {
+    if (!db) throw new Error("Database not available");
+    const result = await db.insert(users).values(user).returning();
+    return result[0];
+  }
+
+  async getAllPairs(): Promise<Pair[]> {
+    if (!db) {
+      // Fallback to sample data if database not available
+      return [{
+        id: 1,
+        name: "Sample Channel Pair",
+        sourceChannel: "-1001234567890",
+        discordWebhook: "https://discord.com/api/webhooks/sample",
+        destinationChannel: "@destination_channel",
+        botToken: "sample_bot_token",
+        session: "main_session",
+        status: "active",
+        enableAI: false,
+        messageCount: 42,
+        blockedCount: 3,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      }];
+    }
+    return await db.select().from(pairs).orderBy(desc(pairs.createdAt));
+  }
+
+  async getPair(id: number): Promise<Pair | undefined> {
+    if (!db) return undefined;
+    const result = await db.select().from(pairs).where(eq(pairs.id, id));
+    return result[0];
+  }
+
+  async createPair(pair: InsertPair): Promise<Pair> {
+    if (!db) throw new Error("Database not available");
+    const result = await db.insert(pairs).values(pair).returning();
+    return result[0];
+  }
+
+  async updatePair(id: number, updates: Partial<Pair>): Promise<Pair | undefined> {
+    if (!db) return undefined;
+    const result = await db.update(pairs).set({...updates, updatedAt: new Date()}).where(eq(pairs.id, id)).returning();
+    return result[0];
+  }
+
+  async deletePair(id: number): Promise<boolean> {
+    if (!db) return false;
+    const result = await db.delete(pairs).where(eq(pairs.id, id));
+    return result.rowCount > 0;
+  }
+
+  async getAllSessions(): Promise<Session[]> {
+    if (!db) {
+      // Fallback to sample data
+      return [{
+        id: 1,
+        name: "Main Session",
+        phone: "+1234567890",
+        sessionFile: "sessions/main.session",
+        status: "active",
+        lastActive: new Date(),
+        createdAt: new Date()
+      }];
+    }
+    return await db.select().from(sessions).orderBy(desc(sessions.createdAt));
+  }
+
+  async getSession(id: number): Promise<Session | undefined> {
+    if (!db) return undefined;
+    const result = await db.select().from(sessions).where(eq(sessions.id, id));
+    return result[0];
+  }
+
+  async getSessionByName(name: string): Promise<Session | undefined> {
+    if (!db) return undefined;
+    const result = await db.select().from(sessions).where(eq(sessions.name, name));
+    return result[0];
+  }
+
+  async createSession(session: InsertSession): Promise<Session> {
+    if (!db) throw new Error("Database not available");
+    const result = await db.insert(sessions).values(session).returning();
+    return result[0];
+  }
+
+  async updateSession(id: number, updates: Partial<Session>): Promise<Session | undefined> {
+    if (!db) return undefined;
+    const result = await db.update(sessions).set({...updates, lastActive: new Date()}).where(eq(sessions.id, id)).returning();
+    return result[0];
+  }
+
+  async deleteSession(id: number): Promise<boolean> {
+    if (!db) return false;
+    const result = await db.delete(sessions).where(eq(sessions.id, id));
+    return result.rowCount > 0;
+  }
+
+  async getAllBlocklists(): Promise<Blocklist[]> {
+    if (!db) return [];
+    return await db.select().from(blocklists).orderBy(desc(blocklists.createdAt));
+  }
+
+  async getBlocklistsByType(type: string): Promise<Blocklist[]> {
+    if (!db) return [];
+    return await db.select().from(blocklists).where(eq(blocklists.type, type));
+  }
+
+  async getGlobalBlocklists(): Promise<Blocklist[]> {
+    if (!db) return [];
+    return await db.select().from(blocklists).where(isNull(blocklists.pairId));
+  }
+
+  async getPairBlocklists(pairId: number): Promise<Blocklist[]> {
+    if (!db) return [];
+    return await db.select().from(blocklists).where(eq(blocklists.pairId, pairId));
+  }
+
+  async createBlocklist(blocklist: InsertBlocklist): Promise<Blocklist> {
+    if (!db) throw new Error("Database not available");
+    const result = await db.insert(blocklists).values(blocklist).returning();
+    return result[0];
+  }
+
+  async deleteBlocklist(id: number): Promise<boolean> {
+    if (!db) return false;
+    const result = await db.delete(blocklists).where(eq(blocklists.id, id));
+    return result.rowCount > 0;
+  }
+
+  async getRecentActivities(limit: number = 100): Promise<Activity[]> {
+    if (!db) return [];
+    return await db.select().from(activities).orderBy(desc(activities.createdAt)).limit(limit);
+  }
+
+  async createActivity(activity: InsertActivity): Promise<Activity> {
+    if (!db) {
+      // Return mock activity if database not available
+      return {
+        id: Math.floor(Math.random() * 1000),
+        ...activity,
+        createdAt: new Date()
+      };
+    }
+    const result = await db.insert(activities).values(activity).returning();
+    return result[0];
+  }
+
+  async getSystemStats(): Promise<SystemStats | undefined> {
+    if (!db) {
+      // Return mock stats if database not available
+      return {
+        id: 1,
+        activePairs: 0,
+        totalMessages: 0,
+        blockedMessages: 0,
+        activeSessions: 0,
+        lastUpdated: new Date()
+      };
+    }
+    const result = await db.select().from(systemStats).limit(1);
+    if (result.length === 0) {
+      // Create initial stats
+      const newStats = await db.insert(systemStats).values({
+        activePairs: 0,
+        totalMessages: 0,
+        blockedMessages: 0,
+        activeSessions: 0
+      }).returning();
+      return newStats[0];
+    }
+    return result[0];
+  }
+
+  async updateSystemStats(stats: Partial<SystemStats>): Promise<SystemStats> {
+    if (!db) throw new Error("Database not available");
+    
+    const existing = await this.getSystemStats();
+    if (!existing) {
+      const newStats = await db.insert(systemStats).values({
+        activePairs: 0,
+        totalMessages: 0,
+        blockedMessages: 0,
+        activeSessions: 0,
+        ...stats
+      }).returning();
+      return newStats[0];
+    }
+    
+    const result = await db.update(systemStats).set({...stats, lastUpdated: new Date()}).where(eq(systemStats.id, existing.id)).returning();
+    return result[0];
+  }
+}
+
+// In-memory storage implementation for fallback
 export class MemStorage implements IStorage {
   private users = new Map<number, User>();
   private pairs = new Map<number, Pair>();
@@ -56,12 +266,10 @@ export class MemStorage implements IStorage {
   private nextId = 1;
 
   constructor() {
-    // Seed with initial data
     this.seedData();
   }
 
   private seedData() {
-    // Create initial system stats
     this.systemStats = {
       id: 1,
       activePairs: 0,
@@ -71,7 +279,6 @@ export class MemStorage implements IStorage {
       lastUpdated: new Date()
     };
 
-    // Create sample data
     const samplePair: Pair = {
       id: 1,
       name: "Sample Channel Pair",
@@ -87,42 +294,39 @@ export class MemStorage implements IStorage {
       createdAt: new Date(),
       updatedAt: new Date()
     };
-    this.pairs.set(1, samplePair);
 
     const sampleSession: Session = {
       id: 1,
       name: "Main Session",
       phone: "+1234567890",
-      sessionFile: "main_session.session",
+      sessionFile: "sessions/main.session",
       status: "active",
       lastActive: new Date(),
       createdAt: new Date()
     };
-    this.sessions.set(1, sampleSession);
 
+    this.pairs.set(1, samplePair);
+    this.sessions.set(1, sampleSession);
     this.nextId = 2;
   }
 
-  // Users
   async getUser(id: number): Promise<User | undefined> {
     return this.users.get(id);
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(u => u.username === username);
+    for (const user of this.users.values()) {
+      if (user.username === username) return user;
+    }
+    return undefined;
   }
 
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const user: User = {
-      id: this.nextId++,
-      username: insertUser.username,
-      password: insertUser.password
-    };
-    this.users.set(user.id, user);
-    return user;
+  async createUser(user: InsertUser): Promise<User> {
+    const newUser: User = { id: this.nextId++, ...user };
+    this.users.set(newUser.id, newUser);
+    return newUser;
   }
 
-  // Pairs
   async getAllPairs(): Promise<Pair[]> {
     return Array.from(this.pairs.values());
   }
@@ -131,36 +335,22 @@ export class MemStorage implements IStorage {
     return this.pairs.get(id);
   }
 
-  async createPair(insertPair: InsertPair): Promise<Pair> {
-    const pair: Pair = {
+  async createPair(pair: InsertPair): Promise<Pair> {
+    const newPair: Pair = {
       id: this.nextId++,
-      name: insertPair.name,
-      sourceChannel: insertPair.sourceChannel,
-      discordWebhook: insertPair.discordWebhook,
-      destinationChannel: insertPair.destinationChannel,
-      botToken: insertPair.botToken,
-      session: insertPair.session,
-      status: insertPair.status || "active",
-      enableAI: insertPair.enableAI || false,
+      ...pair,
       messageCount: 0,
       blockedCount: 0,
       createdAt: new Date(),
       updatedAt: new Date()
     };
-    this.pairs.set(pair.id, pair);
-    await this.createActivity({
-      type: "pair_created",
-      message: `Created new pair: ${pair.name}`,
-      pairId: pair.id,
-      severity: "success"
-    });
-    return pair;
+    this.pairs.set(newPair.id, newPair);
+    return newPair;
   }
 
   async updatePair(id: number, updates: Partial<Pair>): Promise<Pair | undefined> {
     const pair = this.pairs.get(id);
     if (!pair) return undefined;
-    
     const updatedPair = { ...pair, ...updates, updatedAt: new Date() };
     this.pairs.set(id, updatedPair);
     return updatedPair;
@@ -170,7 +360,6 @@ export class MemStorage implements IStorage {
     return this.pairs.delete(id);
   }
 
-  // Sessions
   async getAllSessions(): Promise<Session[]> {
     return Array.from(this.sessions.values());
   }
@@ -180,28 +369,27 @@ export class MemStorage implements IStorage {
   }
 
   async getSessionByName(name: string): Promise<Session | undefined> {
-    return Array.from(this.sessions.values()).find(s => s.name === name);
+    for (const session of this.sessions.values()) {
+      if (session.name === name) return session;
+    }
+    return undefined;
   }
 
-  async createSession(insertSession: InsertSession): Promise<Session> {
-    const session: Session = {
+  async createSession(session: InsertSession): Promise<Session> {
+    const newSession: Session = {
       id: this.nextId++,
-      name: insertSession.name,
-      phone: insertSession.phone,
-      sessionFile: insertSession.sessionFile,
-      status: insertSession.status || "active",
+      ...session,
       lastActive: new Date(),
       createdAt: new Date()
     };
-    this.sessions.set(session.id, session);
-    return session;
+    this.sessions.set(newSession.id, newSession);
+    return newSession;
   }
 
   async updateSession(id: number, updates: Partial<Session>): Promise<Session | undefined> {
     const session = this.sessions.get(id);
     if (!session) return undefined;
-    
-    const updatedSession = { ...session, ...updates };
+    const updatedSession = { ...session, ...updates, lastActive: new Date() };
     this.sessions.set(id, updatedSession);
     return updatedSession;
   }
@@ -210,7 +398,6 @@ export class MemStorage implements IStorage {
     return this.sessions.delete(id);
   }
 
-  // Blocklists
   async getAllBlocklists(): Promise<Blocklist[]> {
     return Array.from(this.blocklists.values());
   }
@@ -227,56 +414,36 @@ export class MemStorage implements IStorage {
     return Array.from(this.blocklists.values()).filter(b => b.pairId === pairId);
   }
 
-  async createBlocklist(insertBlocklist: InsertBlocklist): Promise<Blocklist> {
-    const blocklist: Blocklist = {
+  async createBlocklist(blocklist: InsertBlocklist): Promise<Blocklist> {
+    const newBlocklist: Blocklist = {
       id: this.nextId++,
-      type: insertBlocklist.type,
-      value: insertBlocklist.value,
-      pairId: insertBlocklist.pairId || null,
-      isActive: insertBlocklist.isActive !== false,
+      ...blocklist,
       createdAt: new Date()
     };
-    this.blocklists.set(blocklist.id, blocklist);
-    return blocklist;
+    this.blocklists.set(newBlocklist.id, newBlocklist);
+    return newBlocklist;
   }
 
   async deleteBlocklist(id: number): Promise<boolean> {
     return this.blocklists.delete(id);
   }
 
-  // Activities
-  async getRecentActivities(limit: number = 50): Promise<Activity[]> {
-    const activities = Array.from(this.activities.values())
-      .sort((a, b) => {
-        const aTime = a.createdAt?.getTime() || 0;
-        const bTime = b.createdAt?.getTime() || 0;
-        return bTime - aTime;
-      })
-      .slice(0, limit);
-    return activities;
+  async getRecentActivities(limit: number = 100): Promise<Activity[]> {
+    return Array.from(this.activities.values()).slice(0, limit);
   }
 
-  async createActivity(insertActivity: InsertActivity): Promise<Activity> {
-    const activity: Activity = {
+  async createActivity(activity: InsertActivity): Promise<Activity> {
+    const newActivity: Activity = {
       id: this.nextId++,
-      type: insertActivity.type,
-      message: insertActivity.message,
-      details: insertActivity.details || null,
-      pairId: insertActivity.pairId || null,
-      sessionId: insertActivity.sessionId || null,
-      severity: insertActivity.severity || "info",
+      ...activity,
       createdAt: new Date()
     };
-    this.activities.set(activity.id, activity);
-    return activity;
+    this.activities.set(newActivity.id, newActivity);
+    return newActivity;
   }
 
-  // System Stats
   async getSystemStats(): Promise<SystemStats | undefined> {
-    if (!this.systemStats) {
-      return await this.updateSystemStatsFromData();
-    }
-    return this.systemStats;
+    return this.systemStats || undefined;
   }
 
   async updateSystemStats(stats: Partial<SystemStats>): Promise<SystemStats> {
@@ -287,215 +454,15 @@ export class MemStorage implements IStorage {
         totalMessages: 0,
         blockedMessages: 0,
         activeSessions: 0,
-        lastUpdated: new Date()
+        lastUpdated: new Date(),
+        ...stats
       };
+    } else {
+      this.systemStats = { ...this.systemStats, ...stats, lastUpdated: new Date() };
     }
-    
-    this.systemStats = {
-      ...this.systemStats,
-      ...stats,
-      lastUpdated: new Date()
-    };
     return this.systemStats;
   }
-
-  private async updateSystemStatsFromData(): Promise<SystemStats> {
-    const allPairs = Array.from(this.pairs.values());
-    const allSessions = Array.from(this.sessions.values());
-    
-    const activePairs = allPairs.filter(p => p.status === "active").length;
-    const totalMessages = allPairs.reduce((sum, p) => sum + (p.messageCount || 0), 0);
-    const blockedMessages = allPairs.reduce((sum, p) => sum + (p.blockedCount || 0), 0);
-    const activeSessions = allSessions.filter(s => s.status === "active").length;
-
-    return await this.updateSystemStats({
-      activePairs,
-      totalMessages,
-      blockedMessages,
-      activeSessions,
-    });
-  }
 }
 
-export class DatabaseStorage implements IStorage {
-  // Users
-  async getUser(id: number): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.id, id));
-    return user;
-  }
-
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.username, username));
-    return user;
-  }
-
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const [user] = await db.insert(users).values(insertUser).returning();
-    return user;
-  }
-
-  // Pairs
-  async getAllPairs(): Promise<Pair[]> {
-    return await db.select().from(pairs);
-  }
-
-  async getPair(id: number): Promise<Pair | undefined> {
-    const [pair] = await db.select().from(pairs).where(eq(pairs.id, id));
-    return pair;
-  }
-
-  async createPair(insertPair: InsertPair): Promise<Pair> {
-    const [pair] = await db.insert(pairs).values(insertPair).returning();
-    
-    // Log activity
-    await this.createActivity({
-      type: "pair_created",
-      message: `Created new pair: ${pair.name}`,
-      pairId: pair.id,
-      severity: "success"
-    });
-    
-    return pair;
-  }
-
-  async updatePair(id: number, updates: Partial<Pair>): Promise<Pair | undefined> {
-    const [pair] = await db
-      .update(pairs)
-      .set({ ...updates, updatedAt: new Date() })
-      .where(eq(pairs.id, id))
-      .returning();
-    return pair;
-  }
-
-  async deletePair(id: number): Promise<boolean> {
-    const result = await db.delete(pairs).where(eq(pairs.id, id));
-    return result.rowCount > 0;
-  }
-
-  // Sessions
-  async getAllSessions(): Promise<Session[]> {
-    return await db.select().from(sessions);
-  }
-
-  async getSession(id: number): Promise<Session | undefined> {
-    const [session] = await db.select().from(sessions).where(eq(sessions.id, id));
-    return session;
-  }
-
-  async getSessionByName(name: string): Promise<Session | undefined> {
-    const [session] = await db.select().from(sessions).where(eq(sessions.name, name));
-    return session;
-  }
-
-  async createSession(insertSession: InsertSession): Promise<Session> {
-    const [session] = await db.insert(sessions).values(insertSession).returning();
-    return session;
-  }
-
-  async updateSession(id: number, updates: Partial<Session>): Promise<Session | undefined> {
-    const [session] = await db
-      .update(sessions)
-      .set(updates)
-      .where(eq(sessions.id, id))
-      .returning();
-    return session;
-  }
-
-  async deleteSession(id: number): Promise<boolean> {
-    const result = await db.delete(sessions).where(eq(sessions.id, id));
-    return result.rowCount > 0;
-  }
-
-  // Blocklists
-  async getAllBlocklists(): Promise<Blocklist[]> {
-    return await db.select().from(blocklists);
-  }
-
-  async getBlocklistsByType(type: string): Promise<Blocklist[]> {
-    return await db.select().from(blocklists).where(eq(blocklists.type, type));
-  }
-
-  async getGlobalBlocklists(): Promise<Blocklist[]> {
-    return await db.select().from(blocklists).where(isNull(blocklists.pairId));
-  }
-
-  async getPairBlocklists(pairId: number): Promise<Blocklist[]> {
-    return await db.select().from(blocklists).where(eq(blocklists.pairId, pairId));
-  }
-
-  async createBlocklist(insertBlocklist: InsertBlocklist): Promise<Blocklist> {
-    const [blocklist] = await db.insert(blocklists).values(insertBlocklist).returning();
-    return blocklist;
-  }
-
-  async deleteBlocklist(id: number): Promise<boolean> {
-    const result = await db.delete(blocklists).where(eq(blocklists.id, id));
-    return result.rowCount > 0;
-  }
-
-  // Activities
-  async getRecentActivities(limit: number = 50): Promise<Activity[]> {
-    return await db
-      .select()
-      .from(activities)
-      .orderBy(desc(activities.createdAt))
-      .limit(limit);
-  }
-
-  async createActivity(insertActivity: InsertActivity): Promise<Activity> {
-    const [activity] = await db
-      .insert(activities)
-      .values(insertActivity)
-      .returning();
-    return activity;
-  }
-
-  // System Stats
-  async getSystemStats(): Promise<SystemStats | undefined> {
-    const [stats] = await db.select().from(systemStats).limit(1);
-    if (!stats) {
-      // Create initial stats if none exist
-      return await this.updateSystemStatsFromData();
-    }
-    return stats;
-  }
-
-  async updateSystemStats(stats: Partial<SystemStats>): Promise<SystemStats> {
-    const existing = await db.select().from(systemStats).limit(1);
-    
-    if (existing.length === 0) {
-      const [newStats] = await db
-        .insert(systemStats)
-        .values({ ...stats, lastUpdated: new Date() })
-        .returning();
-      return newStats;
-    } else {
-      const [updatedStats] = await db
-        .update(systemStats)
-        .set({ ...stats, lastUpdated: new Date() })
-        .where(eq(systemStats.id, existing[0].id))
-        .returning();
-      return updatedStats;
-    }
-  }
-
-  private async updateSystemStatsFromData(): Promise<SystemStats> {
-    const allPairs = await db.select().from(pairs);
-    const allSessions = await db.select().from(sessions);
-    
-    const activePairs = allPairs.filter(p => p.status === "active").length;
-    const totalMessages = allPairs.reduce((sum, p) => sum + (p.messageCount || 0), 0);
-    const blockedMessages = allPairs.reduce((sum, p) => sum + (p.blockedCount || 0), 0);
-    const activeSessions = allSessions.filter(s => s.status === "active").length;
-
-    return await this.updateSystemStats({
-      activePairs,
-      totalMessages,
-      blockedMessages,
-      activeSessions,
-    });
-  }
-}
-
-// Use in-memory storage for development (will switch to database when DATABASE_URL is provided)
-export const storage = new MemStorage();
+// Use database storage if available, fallback to memory storage
+export const storage = db ? new DatabaseStorage() : new MemStorage();
