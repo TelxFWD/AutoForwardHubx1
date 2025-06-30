@@ -1,0 +1,95 @@
+You are building an advanced Telegram-to-Telegram copier module using Telethon for a system called AutoForwardX.
+
+The module must be named: `telegram_copier/copier_multi_session.py`
+
+---
+
+## 🔁 Goal
+- Read messages from multiple source Telegram channels using multiple `.session` files
+- Forward each message to the appropriate destination channel
+- Perform advanced content filtering:
+  - Remove @mentions
+  - Remove custom headers/footers
+- Detect and block trap messages
+- Support multiple users with multiple pairs
+
+---
+
+## 📁 Config Format: `user_copies.json`
+
+```json
+{
+  "users": [
+    {
+      "user_id": "sunil",
+      "session_file": "sunil_1.session",
+      "pairs": [
+        {
+          "source": "@vip_signals",
+          "destination": "@copy_channel",
+          "strip_rules": {
+            "remove_mentions": true,
+            "header_patterns": ["^#\\w+", "^(⭐|🔥|VIP|ENTRY)\\b"],
+            "footer_patterns": ["shared by .*", "auto copy.*"]
+          }
+        }
+      ]
+    }
+  ]
+}
+✂️ Advanced Filtering Logic
+Implement strip_custom_header_footer(text: str, config: dict) -> str:
+
+Removes lines matching header_patterns
+
+Removes lines matching footer_patterns
+
+Removes all @mentions if remove_mentions = true
+
+Applies per-pair before forwarding
+
+🔍 Trap Detection
+Integrate trap_detector.py with methods:
+
+is_text_trap(text)
+
+is_image_trap(image_bytes)
+
+is_edit_trap(msg_id)
+
+Block message if trap is detected, and log the event.
+
+📤 Format-Preserving Forwarding
+Forward messages with Markdown or HTML formatting preserved
+
+If message is a reply, attempt to preserve reply context (if possible)
+
+Forward media messages (images, videos) with cleaned caption
+
+🧠 Multi-User Support
+Load all sessions defined in user_copies.json
+
+For each session:
+
+Spawn async Telethon client
+
+Monitor all source channels
+
+Forward to corresponding destination
+
+Maintain per-user message map for edit/delete sync
+
+Load paused_users.json to ignore paused users dynamically
+
+🧪 Requirements
+Fully async
+
+Trap detection integration
+
+Robust logging (loguru or logging)
+
+Retry on failures (network, rate limit)
+
+Type-hinted functions
+
+Modular code (each component in reusable function)
