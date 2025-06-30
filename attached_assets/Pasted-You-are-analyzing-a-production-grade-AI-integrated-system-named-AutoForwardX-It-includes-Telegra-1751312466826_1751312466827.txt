@@ -1,0 +1,99 @@
+You are analyzing a production-grade AI-integrated system named AutoForwardX.
+
+It includes Telegram and Discord bots, a web UI, a multi-session copier, trap detection, message formatting, session management, and process lifecycle handling.
+
+Please scan the entire codebase to:
+
+---
+
+## 🔍 1. Validate All Core Functions
+
+Ensure the following features are correctly implemented and integrated:
+
+### ✅ Telegram Userbot
+- Loads all `.session` files
+- Listens to source channels
+- Triggers forwarding logic
+
+### ✅ Telegram Poster Bot
+- Posts messages using `bot_token`
+- Supports edit/delete via mapping
+- Preserves formatting (Markdown/HTML)
+
+### ✅ Discord Bot
+- Receives messages via webhook
+- Tracks edit/delete events
+- Cleans text while preserving formatting
+- Sends clean text to TG poster
+
+### ✅ Multi-User Copier (Telethon)
+- Loads users from `user_copies.json`
+- Supports multiple source→destination pairs
+- Applies trap detection and formatting cleanly
+
+### ✅ Trap Detector
+- Detects traps via:
+  - Mentions
+  - Header/Footer patterns
+  - Image hash match
+  - Multi-edit detection
+- Returns `is_trap = True/False` correctly
+
+### ✅ Message Mapping
+- Maintains ID mapping for edit/delete
+- Syncs across Discord → Telegram
+
+### ✅ Admin Bot
+- Can pause/resume pairs
+- Add/remove blocked terms or images
+- Notifies on traps or failures
+
+### ✅ Session Loader
+- Sends OTP via Telethon
+- Verifies OTP
+- Saves `.session` file
+- Stores metadata
+
+### ✅ Web UI
+- CRUD for session/pair/blocklist
+- Add session with OTP flow
+- Buttons to start/stop copier
+- Log viewer and status monitor
+
+---
+
+## 🛠 2. Fix Bugs and Incomplete Code
+
+- Identify all `TODO`, `FIXME`, or unimplemented methods
+- Implement any missing `edit_telegram_message`, `retry`, or `process_control`
+- Resolve broken references or missing files
+- Fix any broken imports or config path issues
+
+---
+
+## 🧪 3. Add Safety, Retry & Logging
+
+- Wrap Telegram/Discord API calls in retry decorators
+- Validate `.env` loading
+- Catch and log exceptions gracefully
+- Log all critical operations: message send, edit, trap
+
+---
+
+## 🧠 4. Sanity Check All Connections
+
+- Telegram userbot → Discord → Telegram poster: end-to-end data flow works
+- Pause/resume updates are respected at runtime
+- Messages are only forwarded if clean and not paused
+- Each component has health status and error resilience
+
+---
+
+## ✅ Deliverables
+
+- All critical bugs resolved
+- All functions connected end-to-end
+- Logs updated and safe
+- Verified session, trap, copier, and admin logic
+- Project ready to test in real-world conditions
+

@@ -1,0 +1,21 @@
+{
+  "global_blocklist": {
+    "text": [
+      "/ *",
+      "1",
+      "leak",
+      "trap",
+      "edit this",
+      "scam",
+      "fake",
+      "spam"
+    ],
+    "images": []
+  },
+  "pair_blocklist": {
+    "sample_pair": {
+      "text": [],
+      "images": []
+    }
+  }
+}

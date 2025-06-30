@@ -51,7 +51,7 @@ class ProcessManager {
   private getComponentCommand(component: string): string[] {
     const commands: Record<string, string[]> = {
       'userbot': ['python3', 'telegram_reader/main.py'],
-      'poster': ['python3', 'telegram_poster.py'],
+      'poster': ['python3', 'telegram_poster_enhanced.py'],
       'discord_bot': ['python3', 'discord_bot.py'],
       'copier': ['python3', 'telegram_copier/copier_multi_session.py'],
       'admin_bot': ['python3', 'telegram_admin_bot.py']

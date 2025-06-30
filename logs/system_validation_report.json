@@ -1,0 +1,122 @@
+{
+  "components": {
+    "file_structure": {
+      "status": "pass",
+      "missing_directories": [],
+      "missing_files": [],
+      "total_required": 21,
+      "found": 21
+    },
+    "python_imports": {
+      "discord_bot.py": {
+        "status": "syntax_ok",
+        "expected_classes": [
+          "MessageCleaner",
+          "AutoForwardXBot"
+        ]
+      },
+      "telegram_poster_enhanced.py": {
+        "status": "syntax_ok",
+        "expected_classes": [
+          "TelegramPosterEnhanced",
+          "MessageMappingManager"
+        ]
+      },
+      "telegram_admin_bot.py": {
+        "status": "syntax_ok",
+        "expected_classes": [
+          "AutoForwardXAdminBot"
+        ]
+      },
+      "config_validator.py": {
+        "status": "syntax_ok",
+        "expected_classes": [
+          "ConfigValidator"
+        ]
+      },
+      "logging_config.py": {
+        "status": "syntax_ok",
+        "expected_classes": [
+          "LogManager"
+        ]
+      },
+      "retry_util.py": {
+        "status": "syntax_ok",
+        "expected_classes": [
+          "retry_async",
+          "safe_telegram_operation"
+        ]
+      }
+    },
+    "environment": {
+      "status": "fail",
+      "missing_required": [
+        "TELEGRAM_API_ID",
+        "TELEGRAM_API_HASH"
+      ],
+      "missing_optional": [
+        "DISCORD_BOT_TOKEN",
+        "ADMIN_BOT_TOKEN",
+        "ADMIN_USER_IDS",
+        "DATABASE_URL"
+      ],
+      "present_variables": {}
+    }
+  },
+  "configurations": {
+    "cleaner_config.json": {
+      "status": "pass",
+      "missing_keys": [],
+      "pattern_count": 30
+    },
+    "telegram_reader/config/pairs.json": {
+      "status": "pass",
+      "total_pairs": 1,
+      "valid_pairs": 1
+    },
+    "telegram_reader/config/sessions.json": {
+      "status": "pass",
+      "session_count": 1
+    },
+    "telegram_reader/config/blocklist.json": {
+      "status": "pass",
+      "missing_keys": []
+    },
+    "user_copies.json": {
+      "status": "pass",
+      "user_count": 1
+    }
+  },
+  "integrations": {
+    "message_flow": {
+      "message_cleaner": {
+        "status": "pass",
+        "trap_detection_working": true,
+        "cleaning_functional": true
+      },
+      "message_mapping": {
+        "status": "pass",
+        "exists": true
+      }
+    }
+  },
+  "overall_status": "critical",
+  "critical_issues": [
+    "Missing required env vars: ['TELEGRAM_API_ID', 'TELEGRAM_API_HASH']"
+  ],
+  "warnings": [
+    "Missing optional env vars: ['DISCORD_BOT_TOKEN', 'ADMIN_BOT_TOKEN', 'ADMIN_USER_IDS', 'DATABASE_URL']"
+  ],
+  "recommendations": [
+    "Fix critical issues before production deployment",
+    "Address warnings for optimal system performance",
+    "Test end-to-end message flow with real data",
+    "Set up monitoring and alerting for production"
+  ],
+  "summary": {
+    "timestamp": "2025-06-30T19:45:57.588821",
+    "critical_issues": 1,
+    "warnings": 1,
+    "overall_status": "critical"
+  }
+}

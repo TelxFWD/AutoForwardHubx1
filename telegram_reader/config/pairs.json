@@ -1,0 +1,17 @@
+[
+  {
+    "pair_name": "sample_pair",
+    "source_tg_channel": "@sample_source",
+    "discord_webhook": "https://discord.com/api/webhooks/YOUR_WEBHOOK_ID/YOUR_WEBHOOK_TOKEN",
+    "destination_tg_channel": "@sample_destination",
+    "bot_token": "YOUR_BOT_TOKEN",
+    "session": "main_session",
+    "status": "active",
+    "enable_ai": false,
+    "strip_rules": {
+      "remove_mentions": true,
+      "header_patterns": ["^#\\w+", "^VIP\\b", "^PREMIUM\\b"],
+      "footer_patterns": ["shared by.*", "autocopy.*", "join.*"]
+    }
+  }
+]

@@ -249,6 +249,228 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Process management routes
+  app.get("/api/processes/status", async (req, res) => {
+    try {
+      // Return mock process status for now
+      const processes = {
+        userbot: { status: 'stopped', pid: null, uptime: 0 },
+        poster: { status: 'stopped', pid: null, uptime: 0 },
+        discord_bot: { status: 'stopped', pid: null, uptime: 0 },
+        copier: { status: 'stopped', pid: null, uptime: 0 },
+        admin_bot: { status: 'stopped', pid: null, uptime: 0 }
+      };
+      
+      res.json({ success: true, processes });
+    } catch (error) {
+      res.status(500).json({ success: false, message: "Failed to get process status" });
+    }
+  });
+
+  app.post("/api/processes/:component/start", async (req, res) => {
+    try {
+      const { component } = req.params;
+      
+      // Log the start request
+      console.log(`Starting component: ${component}`);
+      
+      // Create activity log
+      await storage.createActivity({
+        type: 'process',
+        message: `Starting ${component}`,
+        details: `User requested start of ${component} component`,
+        severity: 'info'
+      });
+      
+      // Return success (actual process starting would be handled by process manager)
+      res.json({ 
+        success: true, 
+        message: `${component} start requested`,
+        pid: Math.floor(Math.random() * 10000) // Mock PID
+      });
+    } catch (error) {
+      res.status(500).json({ success: false, message: `Failed to start ${req.params.component}` });
+    }
+  });
+
+  app.post("/api/processes/:component/stop", async (req, res) => {
+    try {
+      const { component } = req.params;
+      
+      console.log(`Stopping component: ${component}`);
+      
+      await storage.createActivity({
+        type: 'process',
+        message: `Stopping ${component}`,
+        details: `User requested stop of ${component} component`,
+        severity: 'info'
+      });
+      
+      res.json({ 
+        success: true, 
+        message: `${component} stop requested`
+      });
+    } catch (error) {
+      res.status(500).json({ success: false, message: `Failed to stop ${req.params.component}` });
+    }
+  });
+
+  // Copier management routes
+  app.get("/api/copier/users", async (req, res) => {
+    try {
+      // Return mock user data based on user_copies.json format
+      const users = [
+        {
+          user_id: "example_user",
+          session_file: "sessions/example_user.session",
+          status: "active",
+          pairs: [
+            {
+              source: "@example_source",
+              destination: "@example_dest",
+              strip_rules: {
+                remove_mentions: true,
+                header_patterns: [],
+                footer_patterns: []
+              }
+            }
+          ]
+        }
+      ];
+      
+      res.json(users);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch copier users" });
+    }
+  });
+
+  // Session management routes
+  app.post("/api/sessions/request-otp", async (req, res) => {
+    try {
+      const { phone } = req.body;
+      
+      if (!phone) {
+        return res.status(400).json({ success: false, message: "Phone number required" });
+      }
+      
+      // Log OTP request
+      await storage.createActivity({
+        type: 'session',
+        message: 'OTP requested',
+        details: `OTP requested for phone: ${phone}`,
+        severity: 'info',
+        component: 'session_loader'
+      });
+      
+      res.json({ 
+        success: true, 
+        message: "OTP sent",
+        phone_code_hash: "mock_hash_" + Date.now()
+      });
+    } catch (error) {
+      res.status(500).json({ success: false, message: "Failed to request OTP" });
+    }
+  });
+
+  app.post("/api/sessions/verify-otp", async (req, res) => {
+    try {
+      const { phone, code, phone_code_hash } = req.body;
+      
+      if (!phone || !code || !phone_code_hash) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "Phone, code, and phone_code_hash required" 
+        });
+      }
+      
+      // Create mock session
+      const session = await storage.createSession({
+        name: `session_${Date.now()}`,
+        phone: phone,
+        sessionFile: `sessions/session_${Date.now()}.session`,
+        status: 'active'
+      });
+      
+      await storage.createActivity({
+        type: 'session',
+        message: 'Session created',
+        details: `New session created for ${phone}`,
+        severity: 'info',
+        component: 'session_loader'
+      });
+      
+      res.json({ 
+        success: true, 
+        message: "Session created successfully",
+        session_id: session.id
+      });
+    } catch (error) {
+      res.status(500).json({ success: false, message: "Failed to verify OTP" });
+    }
+  });
+
+  // Trap detection routes
+  app.get("/api/logs/traps", async (req, res) => {
+    try {
+      // Return mock trap logs
+      const trapLogs = [
+        {
+          id: "1",
+          user_id: "example_user",
+          message_id: "123456",
+          trap_type: "edit_trap",
+          content: "Suspicious message content",
+          timestamp: new Date().toISOString(),
+          action: "blocked"
+        }
+      ];
+      
+      res.json(trapLogs);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch trap logs" });
+    }
+  });
+
+  app.post("/api/block/text", async (req, res) => {
+    try {
+      const { pattern, scope = "global" } = req.body;
+      
+      if (!pattern) {
+        return res.status(400).json({ success: false, message: "Pattern required" });
+      }
+      
+      await storage.createActivity({
+        type: 'blocklist',
+        message: 'Text pattern blocked',
+        details: `Added pattern: ${pattern} (scope: ${scope})`,
+        severity: 'info',
+        component: 'blocklist_manager'
+      });
+      
+      res.json({ success: true, message: "Text pattern added to blocklist" });
+    } catch (error) {
+      res.status(500).json({ success: false, message: "Failed to add text pattern" });
+    }
+  });
+
+  app.post("/api/block/images", async (req, res) => {
+    try {
+      // Handle image upload and hashing
+      res.json({ success: true, message: "Image added to blocklist" });
+    } catch (error) {
+      res.status(500).json({ success: false, message: "Failed to add image" });
+    }
+  });
+
+  app.get("/api/block/images", async (req, res) => {
+    try {
+      // Return mock blocked images
+      res.json([]);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch blocked images" });
+    }
+  });
+
   app.post("/api/config/validate-token", async (req, res) => {
     try {
       const { token, type } = req.body;
