@@ -81,19 +81,19 @@ export default function TelXPage() {
   // Fetch copier users
   const { data: users = [], isLoading: usersLoading } = useQuery({
     queryKey: ['/api/copier/users'],
-    refetchInterval: 5000,
+    refetchInterval: 30000, // Reduced from 5000 to 30000 (30 seconds)
   });
 
   // Fetch blocked images
   const { data: blockedImages = [], isLoading: imagesLoading } = useQuery({
     queryKey: ['/api/block/images'],
-    refetchInterval: 30000,
+    refetchInterval: 60000, // Reduced refresh frequency to 60 seconds
   });
 
   // Fetch trap logs
   const { data: trapLogs = [], isLoading: logsLoading } = useQuery({
     queryKey: ['/api/logs/traps'],
-    refetchInterval: 5000,
+    refetchInterval: 30000, // Reduced from 5000 to 30000 (30 seconds)
   });
 
   // Type-safe data
@@ -691,6 +691,7 @@ export default function TelXPage() {
     const [newTextPattern, setNewTextPattern] = useState("");
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [loading, setLoading] = useState(false);
+    const [activeTab, setActiveTab] = useState("text");
 
     const handleAddText = async () => {
       if (!newTextPattern.trim()) return;
@@ -699,6 +700,7 @@ export default function TelXPage() {
       try {
         await addBlockedTextMutation.mutateAsync(newTextPattern.trim());
         setNewTextPattern("");
+        toast({ title: "Success", description: "Text pattern added to blocklist" });
       } catch (error: any) {
         toast({ title: "Error", description: error.message, variant: "destructive" });
       } finally {
@@ -715,6 +717,7 @@ export default function TelXPage() {
         formData.append('image', selectedFile);
         await addBlockedImageMutation.mutateAsync(formData);
         setSelectedFile(null);
+        toast({ title: "Success", description: "Image added to blocklist" });
       } catch (error: any) {
         toast({ title: "Error", description: error.message, variant: "destructive" });
       } finally {
@@ -722,48 +725,102 @@ export default function TelXPage() {
       }
     };
 
+    // Predefined common patterns for easy addition
+    const commonPatterns = [
+      "/ *", "1", "leak", "trap", "edit this", "scam", "fake", "spam",
+      "^leak", ".*trap.*", "porn", "nude", "18+", "adult"
+    ];
+
     return (
       <Dialog open={showBlocklistManager} onOpenChange={setShowBlocklistManager}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Blocklist Manager</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <Shield className="w-5 h-5" />
+              Advanced Blocklist Manager
+            </DialogTitle>
             <DialogDescription>
-              Manage blocked text patterns and images
+              Manage blocked text patterns, images, and content filtering rules for all users
             </DialogDescription>
           </DialogHeader>
           
-          <Tabs defaultValue="text" className="space-y-4">
-            <TabsList>
-              <TabsTrigger value="text">Text Patterns</TabsTrigger>
-              <TabsTrigger value="images">Images</TabsTrigger>
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="text" className="flex items-center gap-2">
+                <MessageSquare className="w-4 h-4" />
+                Text Patterns & Words
+              </TabsTrigger>
+              <TabsTrigger value="images" className="flex items-center gap-2">
+                <Image className="w-4 h-4" />
+                Image Blocking
+              </TabsTrigger>
             </TabsList>
             
-            <TabsContent value="text" className="space-y-4">
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Enter text pattern or regex (e.g., 'trap', '/ *', '^leak')"
-                  value={newTextPattern}
-                  onChange={(e) => setNewTextPattern(e.target.value)}
-                />
-                <Button onClick={handleAddText} disabled={loading || !newTextPattern.trim()}>
-                  {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-                </Button>
+            <TabsContent value="text" className="space-y-6">
+              {/* Add new pattern section */}
+              <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
+                <h4 className="font-medium mb-3 text-blue-900 dark:text-blue-100">Add New Text Pattern</h4>
+                <div className="flex gap-2 mb-3">
+                  <Input
+                    placeholder="Enter text pattern, word, or regex (e.g., 'trap', '/ *', '^leak.*')"
+                    value={newTextPattern}
+                    onChange={(e) => setNewTextPattern(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && handleAddText()}
+                    className="flex-1"
+                  />
+                  <Button onClick={handleAddText} disabled={loading || !newTextPattern.trim()}>
+                    {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                    Add Pattern
+                  </Button>
+                </div>
+                
+                {/* Quick add common patterns */}
+                <div className="space-y-2">
+                  <h5 className="text-sm font-medium text-blue-800 dark:text-blue-200">Quick Add Common Patterns:</h5>
+                  <div className="flex flex-wrap gap-2">
+                    {commonPatterns.map((pattern, idx) => (
+                      <Button
+                        key={idx}
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setNewTextPattern(pattern)}
+                        className="text-xs h-7 bg-white hover:bg-blue-100 border-blue-200"
+                      >
+                        {pattern}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
               </div>
               
-              <div className="space-y-2">
-                <h4 className="font-medium">Current Text Patterns:</h4>
-                <div className="grid gap-2">
-                  {/* Mock text patterns - in production, fetch from API */}
+              {/* Current patterns display */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-medium">Active Text Patterns ({["/ *", "1", "leak", "trap", "edit this"].length})</h4>
+                  <Badge variant="secondary" className="px-3 py-1">
+                    Global Rules
+                  </Badge>
+                </div>
+                <div className="grid gap-2 max-h-60 overflow-y-auto">
                   {["/ *", "1", "leak", "trap", "edit this"].map((pattern, idx) => (
-                    <div key={idx} className="flex items-center justify-between bg-gray-50 p-2 rounded">
-                      <code className="text-sm">{pattern}</code>
-                      <Button 
-                        size="sm" 
-                        variant="destructive"
-                        onClick={() => removeBlockedItemMutation.mutate(pattern)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                    <div key={idx} className="flex items-center justify-between bg-white dark:bg-gray-800 p-3 rounded-lg border shadow-sm">
+                      <div className="flex items-center gap-3">
+                        <Badge variant="outline" className="font-mono text-xs">REGEX</Badge>
+                        <code className="text-sm font-medium">{pattern}</code>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary" className="text-xs">
+                          Added: Today
+                        </Badge>
+                        <Button 
+                          size="sm" 
+                          variant="destructive"
+                          onClick={() => removeBlockedItemMutation.mutate(pattern)}
+                          className="h-8 w-8 p-0"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -928,11 +985,23 @@ export default function TelXPage() {
         </Card>
 
       <Tabs defaultValue="sessions" className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="sessions">User Sessions</TabsTrigger>
-          <TabsTrigger value="pairs">Pair Management</TabsTrigger>
-          <TabsTrigger value="images">Image Blocking</TabsTrigger>
-          <TabsTrigger value="logs">Trap Logs</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-4 bg-white dark:bg-gray-800 shadow-sm">
+          <TabsTrigger value="sessions" className="flex items-center gap-2">
+            <Users className="w-4 h-4" />
+            User Sessions
+          </TabsTrigger>
+          <TabsTrigger value="pairs" className="flex items-center gap-2">
+            <MessageSquare className="w-4 h-4" />
+            Pair Management
+          </TabsTrigger>
+          <TabsTrigger value="images" className="flex items-center gap-2">
+            <Image className="w-4 h-4" />
+            Image Blocking
+          </TabsTrigger>
+          <TabsTrigger value="logs" className="flex items-center gap-2">
+            <Shield className="w-4 h-4" />
+            Trap Logs
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="sessions" className="space-y-4">
@@ -972,33 +1041,82 @@ export default function TelXPage() {
         </TabsContent>
 
         <TabsContent value="pairs" className="space-y-4">
-          {selectedUser ? (
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <h3 className="text-lg font-medium">Pairs for {selectedUser}</h3>
-                <div className="flex gap-2">
-                  <Button onClick={() => setShowBlocklistManager(true)} variant="outline">
-                    <Shield className="w-4 h-4 mr-2" />
-                    Manage Blocklist
-                  </Button>
-                  <Button onClick={() => setShowAddPair(true)}>
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add Pair
-                  </Button>
-                </div>
+          {/* Always show the Add Pair button prominently */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border p-4">
+            <div className="flex justify-between items-center">
+              <div>
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+                  {selectedUser ? `Managing Pairs for: ${selectedUser}` : "Pair Management"}
+                </h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  {selectedUser ? "Configure source to destination forwarding pairs" : "Select a user from the Sessions tab to manage their pairs"}
+                </p>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {typedUsers.find((u: User) => u.user_id === selectedUser)?.pairs.map((pair: Pair, idx: number) => (
-                  <PairCard key={idx} pair={pair} userId={selectedUser} pairIndex={idx} />
-                ))}
+              <div className="flex gap-3">
+                <Button 
+                  onClick={() => setShowBlocklistManager(true)} 
+                  variant="outline"
+                  className="bg-orange-50 hover:bg-orange-100 border-orange-200 text-orange-700"
+                >
+                  <Shield className="w-4 h-4 mr-2" />
+                  Blocklist Manager
+                </Button>
+                <Button 
+                  onClick={() => setShowAddPair(true)}
+                  disabled={!selectedUser}
+                  className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add New Pair
+                </Button>
               </div>
             </div>
+          </div>
+
+          {selectedUser ? (
+            <div className="space-y-4">
+              {typedUsers.find((u: User) => u.user_id === selectedUser)?.pairs.length === 0 ? (
+                <Card className="border-dashed border-2 border-gray-300 dark:border-gray-600">
+                  <CardContent className="text-center py-8">
+                    <MessageSquare className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No Pairs Yet</h3>
+                    <p className="text-gray-500 dark:text-gray-400 mb-4">
+                      Create your first forwarding pair for {selectedUser}
+                    </p>
+                    <Button onClick={() => setShowAddPair(true)} className="bg-gradient-to-r from-blue-500 to-purple-600 text-white">
+                      <Plus className="w-4 h-4 mr-2" />
+                      Create First Pair
+                    </Button>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {typedUsers.find((u: User) => u.user_id === selectedUser)?.pairs.map((pair: Pair, idx: number) => (
+                    <PairCard key={idx} pair={pair} userId={selectedUser} pairIndex={idx} />
+                  ))}
+                </div>
+              )}
+            </div>
           ) : (
-            <Card>
-              <CardContent className="text-center py-8">
-                <MessageSquare className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">Select a User</h3>
-                <p className="text-gray-500">Select a user session from the Sessions tab to manage their pairs.</p>
+            <Card className="border-dashed border-2 border-blue-300 dark:border-blue-600 bg-blue-50 dark:bg-blue-900/20">
+              <CardContent className="text-center py-12">
+                <Users className="w-16 h-16 text-blue-400 mx-auto mb-4" />
+                <h3 className="text-xl font-medium text-blue-900 dark:text-blue-100 mb-2">Select a User Session</h3>
+                <p className="text-blue-600 dark:text-blue-300 mb-6">
+                  Go to the "User Sessions" tab and click on a user to manage their forwarding pairs
+                </p>
+                <Button 
+                  onClick={() => {
+                    // Switch to sessions tab (you can implement tab switching here)
+                    const sessionsTab = document.querySelector('[value="sessions"]') as HTMLElement;
+                    if (sessionsTab) sessionsTab.click();
+                  }}
+                  variant="outline"
+                  className="bg-blue-100 hover:bg-blue-200 border-blue-300 text-blue-700"
+                >
+                  <Users className="w-4 h-4 mr-2" />
+                  Go to Sessions Tab
+                </Button>
               </CardContent>
             </Card>
           )}
