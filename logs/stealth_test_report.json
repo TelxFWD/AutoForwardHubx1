@@ -1,0 +1,107 @@
+{
+  "fingerprint_tests": [
+    {
+      "name": "Repeated Punctuation",
+      "input": "AMAZING SIGNAL!!!!! Buy now?????? 100% guaranteed...........",
+      "output": "AMAZING SIGNAL! Buy now? 100% guaranteed...",
+      "success": true,
+      "reduction": 17
+    },
+    {
+      "name": "Emoji Spam",
+      "input": "\ud83d\udd25\ud83d\udd25\ud83d\udd25\ud83d\udd25\ud83d\udd25 VIP SIGNAL \ud83d\ude80\ud83d\ude80\ud83d\ude80\ud83d\ude80 \ud83d\udcaf\ud83d\udcaf\ud83d\udcaf\ud83d\udcaf",
+      "output": "\ud83d\udd25  \ud83d\ude80 \ud83d\udcaf",
+      "success": true,
+      "reduction": 20
+    },
+    {
+      "name": "Stylized Headers",
+      "input": "*** PREMIUM ENTRY *** === SIGNAL === --- ALERT ---",
+      "output": "SIGNAL ALERT",
+      "success": true,
+      "reduction": 38
+    },
+    {
+      "name": "Zero-Width Characters",
+      "input": "Normal\u200btext\u200cwith\u200dhidden\u2060chars",
+      "output": "Normaltextwithhiddenchars",
+      "success": true,
+      "reduction": 4
+    },
+    {
+      "name": "Attribution Removal",
+      "input": "Buy BTCUSDT\nShared by @tradingbot\nChannel: @signals",
+      "output": "Buy BTCUSDT",
+      "success": true,
+      "reduction": 40
+    }
+  ],
+  "image_tests": [
+    {
+      "name": "Metadata Stripping",
+      "original_size": 827,
+      "processed_size": 361,
+      "metadata_removed": true,
+      "success": true
+    }
+  ],
+  "watermark_tests": [
+    {
+      "name": "Invisible Watermark",
+      "original_length": 47,
+      "watermarked_length": 49,
+      "invisible_chars": 2,
+      "success": true
+    }
+  ],
+  "ai_rewriter_tests": [
+    {
+      "name": "VIP Signal Neutralization",
+      "input": "\ud83d\udd25 VIP PREMIUM SIGNAL \ud83d\udd25 GUARANTEED 100% PROFIT!!!",
+      "output": "\ud83d\udd25 VIP PREMIUM SIGNAL \ud83d\udd25 GUARANTEED 100% PROFIT!!!",
+      "neutralized": false,
+      "success": false
+    },
+    {
+      "name": "Attribution Removal",
+      "input": "Good signal here. Shared by @tradingmaster via TelegramBot",
+      "output": "Good signal here. Shared by @tradingmaster via TelegramBot",
+      "neutralized": true,
+      "success": true
+    },
+    {
+      "name": "Promotional Language",
+      "input": "AMAZING OPPORTUNITY! DON'T MISS! URGENT ENTRY!",
+      "output": "AMAZING OPPORTUNITY! DON'T MISS! URGENT ENTRY!",
+      "neutralized": false,
+      "success": false
+    }
+  ],
+  "compliance_tests": [
+    {
+      "name": "Clean Message",
+      "original": "Buy BTCUSDT at 45000\nTarget: 46000\nStop: 44000",
+      "processed": "Buy BTCUSDT at 45000\nTarget: 46000\nStop: 44000",
+      "compliance_score": 100.0,
+      "expected_score": 90,
+      "success": true
+    },
+    {
+      "name": "Processed Trap Message",
+      "original": "SIGNAL Entry for ETHUSDT",
+      "processed": "SIGNAL Entry for ETHUSDT",
+      "compliance_score": 100.0,
+      "expected_score": 85,
+      "success": true
+    },
+    {
+      "name": "Attribution Message",
+      "original": "Good signal shared by @tradingbot via channel",
+      "processed": "Good signal",
+      "compliance_score": 100.0,
+      "expected_score": 70,
+      "success": true
+    }
+  ],
+  "overall_score": 84.61538461538461
+}

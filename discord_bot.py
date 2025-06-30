@@ -14,9 +14,18 @@ from typing import Dict, List, Optional, Any, Tuple
 from pathlib import Path
 from datetime import datetime, timedelta
 
-import discord
-from discord.ext import commands, tasks
-import aiohttp
+# Import stealth engine for advanced message processing
+from stealth_engine import StealthEngine, process_for_telegram
+
+# Discord imports (optional for development)
+try:
+    import discord
+    from discord.ext import commands, tasks
+    import aiohttp
+    DISCORD_AVAILABLE = True
+except ImportError:
+    DISCORD_AVAILABLE = False
+    print("Discord.py not available - running in development mode")
 
 # Setup logging
 logging.basicConfig(
@@ -37,6 +46,8 @@ class MessageCleaner:
         self.edit_counts: Dict[str, int] = {}
         self.config = self.load_config()
         self.cleaner_logger = self._setup_cleaner_logger()
+        # Initialize stealth engine for advanced message processing
+        self.stealth_engine = StealthEngine()
     
     def _setup_cleaner_logger(self):
         """Setup dedicated logger for message cleaning"""

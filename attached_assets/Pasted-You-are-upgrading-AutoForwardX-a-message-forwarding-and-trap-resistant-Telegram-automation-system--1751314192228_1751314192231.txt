@@ -1,0 +1,159 @@
+You are upgrading AutoForwardX — a message-forwarding and trap-resistant Telegram automation system — to reach full stealth capability (100/100 score).
+
+Please implement the following stealth-enhancing functions and integrations. The goal is to eliminate all forms of traceability, metadata, and fingerprinting.
+
+---
+
+## ✅ 1. Fingerprint Normalization Function
+Implement:
+```python
+def normalize_message_fingerprint(text: str) -> str:
+Remove:
+
+Repeated punctuation: "!!!" → "!", "???" → "?"
+
+Extra whitespace (double spaces, tabs)
+
+Zero-width characters: \u200b, \u200c, \u200d
+
+Normalize stylized traps:
+
+Emojis spam like 🔥🔥🔥 → 🔥
+
+Lines like *** ENTRY 1 *** → Entry 1
+
+Ensure formatting (**, __, []()) is preserved
+
+Call this before sending to Telegram Poster bot.
+
+✅ 2. Image Re-Encoder with Metadata Strip
+Implement:
+
+python
+Copy
+Edit
+def recompress_image(image_bytes: bytes) -> bytes:
+Use PIL or OpenCV to:
+
+Reopen image from bytes
+
+Strip EXIF data and metadata
+
+Recompress to JPEG/PNG
+
+Return the recompressed image as bytes
+
+This prevents Telegram fingerprinting via image metadata.
+
+✅ 3. Optional Invisible Watermark (For Anti-Leak Use)
+Add support for invisible ZWJ/ZWSP watermarking:
+
+python
+Copy
+Edit
+def inject_invisible_noise(text: str, intensity: int = 1) -> str:
+Randomly inject Unicode zero-width characters between words or characters
+
+Intensity: number of insertions per sentence
+
+Only applied to high-risk trap-sensitive channels
+
+✅ 4. AI Caption Rewriter (Optional)
+Implement:
+
+python
+Copy
+Edit
+def rewrite_caption_with_ai(text: str) -> str:
+Use OpenAI or Claude API to:
+
+Rewrite the caption text in a neutral, human-like tone
+
+Remove giveaways like "VIP", "Shared by", "🔥 Entry"
+
+Keep intent (e.g., trade signals, instructions)
+
+Use on captions for forwarded media or sensitive signals.
+
+✅ 5. Poster Bot Verification
+Ensure that:
+
+You use send_message and send_photo, not forward_message
+
+All messages are posted as bot, with no user identity
+
+Any Telegram “forwarded from” field is removed
+
+📁 Integration Requirements
+Add normalize_message_fingerprint() to all forward pipelines
+
+Add recompress_image() before sending any image to Telegram
+
+Add optional toggle to enable watermark or AI caption rewrite per channel
+
+✅ After Implementation
+Log trap-resistant messages to stealth_audit.log
+
+Confirm via test post that:
+
+No Telegram attribution metadata exists
+
+Message is clean, format intact, trap-safe
+
+The goal is to complete the stealth message sanitization pipeline and achieve full anonymity against anti-forwarding techniques.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,20 @@
+{
+  "stealth_settings": {
+    "verify_before_send": true,
+    "min_compliance_score": 85,
+    "enable_watermark": false,
+    "enable_ai_rewrite": false,
+    "strip_all_attribution": true
+  },
+  "posting_settings": {
+    "parse_mode": "HTML",
+    "disable_notification": false,
+    "protect_content": true,
+    "retry_attempts": 3
+  },
+  "verification_settings": {
+    "log_all_posts": true,
+    "verify_after_send": true,
+    "alert_on_compliance_fail": true
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "fingerprint_normalization": {
+    "normalize_punctuation": true,
+    "normalize_emojis": true,
+    "remove_zero_width": true,
+    "normalize_stylized_traps": true,
+    "preserve_formatting": true
+  },
+  "image_processing": {
+    "strip_exif": true,
+    "recompress_quality": 85,
+    "format_conversion": "auto"
+  },
+  "invisible_watermark": {
+    "enabled": false,
+    "intensity": 1,
+    "high_risk_channels": [
+      "high_risk_channel_1",
+      "sensitive_trading_channel"
+    ]
+  },
+  "ai_rewriter": {
+    "enabled": false,
+    "api_provider": "openai",
+    "neutralize_language": true,
+    "preserve_intent": true
+  },
+  "stealth_verification": {
+    "min_compliance_score": 85,
+    "log_all_processing": true,
+    "alert_on_low_score": true
+  }
+}
