@@ -11,7 +11,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const pairs = await storage.getAllPairs();
       res.json(pairs);
     } catch (error) {
-      res.status(500).json({ message: "Failed to fetch pairs" });
+      console.error("Failed to fetch pairs:", error);
+      res.status(500).json({ 
+        message: "Failed to fetch pairs",
+        error: error instanceof Error ? error.message : String(error)
+      });
     }
   });
 
@@ -358,8 +362,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         type: 'session',
         message: 'OTP requested',
         details: `OTP requested for phone: ${phone}`,
-        severity: 'info',
-        component: 'session_loader'
+        severity: 'info'
       });
       
       res.json({ 
@@ -395,8 +398,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         type: 'session',
         message: 'Session created',
         details: `New session created for ${phone}`,
-        severity: 'info',
-        component: 'session_loader'
+        severity: 'info'
       });
       
       res.json({ 
@@ -443,8 +445,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         type: 'blocklist',
         message: 'Text pattern blocked',
         details: `Added pattern: ${pattern} (scope: ${scope})`,
-        severity: 'info',
-        component: 'blocklist_manager'
+        severity: 'info'
       });
       
       res.json({ success: true, message: "Text pattern added to blocklist" });
@@ -500,55 +501,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Session OTP routes
-  app.post("/api/sessions/request-otp", async (req, res) => {
-    try {
-      const { phone } = req.body;
-      
-      if (!phone) {
-        return res.status(400).json({ success: false, message: "Phone number is required" });
-      }
-      
-      // Import and use SessionLoader
-      const { spawn } = await import("child_process");
-      const process = spawn("python3", [
-        "telegram_copier/session_loader.py",
-        "--phone", phone
-      ], {
-        stdio: ["pipe", "pipe", "pipe"]
-      });
-      
-      let output = "";
-      let error = "";
-      
-      process.stdout.on("data", (data) => {
-        output += data.toString();
-      });
-      
-      process.stderr.on("data", (data) => {
-        error += data.toString();
-      });
-      
-      process.on("close", (code) => {
-        if (code === 0) {
-          try {
-            const result = JSON.parse(output);
-            res.json(result);
-          } catch (e) {
-            res.json({ status: "success", message: output.trim() });
-          }
-        } else {
-          res.status(500).json({ 
-            success: false, 
-            message: error || "Failed to request OTP" 
-          });
-        }
-      });
-      
-    } catch (error) {
-      res.status(500).json({ success: false, message: `OTP request failed: ${error}` });
-    }
-  });
+
 
   app.post("/api/sessions/verify-otp", async (req, res) => {
     try {
