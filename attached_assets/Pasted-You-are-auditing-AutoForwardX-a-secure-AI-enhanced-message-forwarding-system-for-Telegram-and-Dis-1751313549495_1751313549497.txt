@@ -1,0 +1,70 @@
+You are auditing AutoForwardX — a secure, AI-enhanced message-forwarding system for Telegram and Discord.
+
+Please do a full system scan and validation to:
+
+---
+
+## ✅ 1. Verify All Core Functions Are Operational
+
+### Telegram Side
+- All sessions are loaded from `.session` files
+- OTP login and session creation work
+- Telegram userbot listens to source channels and routes correctly
+
+### Discord Bot
+- Captures messages via webhook
+- Handles message edits and deletes
+- Applies cleaning logic without breaking formatting
+
+### Telegram Poster
+- Posts messages cleanly to destination channel
+- Edits and deletes sync via message ID mapping
+- Markdown/HTML format is preserved
+
+### Trap Detection
+- Text, image hash, edit traps are detected
+- Blocklist.json is correctly enforced
+- Traps trigger pause logic and admin alerts
+
+### Multi-User Copier
+- Each user has independent session
+- Messages are routed by per-user pair
+- Paused users are skipped
+
+### Admin Bot
+- Inline buttons work (pause/resume, block image/text)
+- Trap notifications and status alerts are received in real-time
+
+### Web UI
+- All pages render correctly
+- Sessions and pairs can be added/updated
+- Webhook config and pause toggles work
+
+---
+
+## 🛡️ 2. Validate Stealth & Untraceability Features
+
+- The bot leaves **no attribution** or metadata in forwarded messages
+- Headers/footers and mentions are **cleaned** before posting
+- Edited trap messages do **not get forwarded** (edit trap detection working)
+- Image traps are blocked using hash logic
+- Session and bot accounts do **not expose sender identity**
+
+---
+
+## 🧪 3. Run Sanity & Safety Checks
+
+- No trap message is forwarded
+- No Telegram ID/user is leaked
+- Message format is preserved but scrubbed
+- Logs are working and don’t expose tokens or sessions
+- Retry logic works if API calls fail
+
+---
+
+✅ Deliver a summary:
+- ✅ What is working
+- ⚠️ What needs attention
+- 🔐 Confirm if the system is operating in stealth mode
+
+The goal is a fully working, untraceable, anti-leak message forwarder.

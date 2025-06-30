@@ -1,0 +1,104 @@
+{
+  "operational_status": {
+    "telegram_userbot": {
+      "status": "operational",
+      "session_management": {
+        "config_present": true,
+        "session_count": 1,
+        "stealth_assessment": "Sessions use phone numbers only - good stealth"
+      },
+      "routing_logic": {
+        "implementation_present": true
+      },
+      "stealth_features": {
+        "no_username_exposure": true,
+        "no_sender_metadata": true,
+        "clean_message_extraction": true
+      }
+    },
+    "discord_bot": {
+      "status": "operational",
+      "message_cleaning": {
+        "mention_removal": true,
+        "header_cleaning": true,
+        "footer_cleaning": true,
+        "formatting_preservation": true
+      },
+      "stealth_features": {
+        "no_bot_attribution": true,
+        "webhook_monitoring_only": true,
+        "clean_forwarding": true,
+        "no_discord_metadata": true
+      },
+      "trap_detection": {
+        "text_traps": true,
+        "edit_traps": true,
+        "pattern_matching": true
+      }
+    },
+    "telegram_poster": {
+      "status": "operational",
+      "message_handling": {
+        "format_preservation": true,
+        "clean_posting": true,
+        "error_handling": true
+      },
+      "stealth_features": {
+        "no_attribution": true,
+        "no_source_reference": false,
+        "clean_content_only": true
+      },
+      "sync_capabilities": {
+        "message_mapping": true,
+        "edit_sync": true,
+        "delete_sync": true
+      }
+    },
+    "trap_detection": {
+      "status": "operational",
+      "detection_methods": {
+        "text_patterns": 19,
+        "spam_patterns": 8,
+        "mention_patterns": 3,
+        "edit_threshold": 3
+      },
+      "blocking_logic": {
+        "config_present": true
+      },
+      "stealth_protection": {
+        "global_blocklist_active": false,
+        "image_hash_blocking": 0,
+        "text_blocking": 0
+      }
+    },
+    "session_security": {
+      "session_isolation": {
+        "directory_present": true,
+        "session_files_count": 0,
+        "secure_storage": true
+      },
+      "identity_protection": {},
+      "api_security": {
+        "env_variables_used": false,
+        "no_hardcoded_tokens": true,
+        "logging_secure": true
+      }
+    }
+  },
+  "stealth_features": {
+    "attribution_removal": {
+      "test_failed": "No module named 'discord'"
+    },
+    "metadata_cleaning": {},
+    "format_preservation": {},
+    "identity_protection": {}
+  },
+  "safety_checks": {},
+  "critical_findings": [
+    "Message cleaner test failed: No module named 'discord'"
+  ],
+  "security_warnings": [],
+  "stealth_score": 77,
+  "overall_security": "acceptable",
+  "audit_timestamp": "2025-06-30T20:01:40.737831"
+}
