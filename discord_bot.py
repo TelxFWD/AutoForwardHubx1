@@ -9,7 +9,8 @@ import logging
 import os
 import sys
 import hashlib
-from typing import Dict, List, Optional, Any
+import re
+from typing import Dict, List, Optional, Any, Tuple
 from pathlib import Path
 from datetime import datetime, timedelta
 
@@ -27,6 +28,259 @@ logging.basicConfig(
     ]
 )
 logger = logging.getLogger(__name__)
+
+class MessageCleaner:
+    """Advanced message cleaning system for Discord to Telegram forwarding"""
+    
+    def __init__(self):
+        self.config_file = Path('cleaner_config.json')
+        self.edit_counts: Dict[str, int] = {}
+        self.config = self.load_config()
+        self.cleaner_logger = self._setup_cleaner_logger()
+    
+    def _setup_cleaner_logger(self):
+        """Setup dedicated logger for message cleaning"""
+        cleaner_logger = logging.getLogger('discord_cleaner')
+        cleaner_logger.setLevel(logging.INFO)
+        
+        # Create logs directory if it doesn't exist
+        Path('logs').mkdir(exist_ok=True)
+        
+        # File handler for cleaner logs
+        handler = logging.FileHandler('logs/discord_cleaner.log')
+        formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+        handler.setFormatter(formatter)
+        cleaner_logger.addHandler(handler)
+        
+        return cleaner_logger
+    
+    def load_config(self) -> Dict[str, Any]:
+        """Load cleaning configuration from JSON file"""
+        try:
+            if self.config_file.exists():
+                with open(self.config_file, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+            else:
+                self.cleaner_logger.error(f"Config file {self.config_file} not found")
+                return self._get_default_config()
+        except Exception as e:
+            self.cleaner_logger.error(f"Error loading cleaner config: {e}")
+            return self._get_default_config()
+    
+    def _get_default_config(self) -> Dict[str, Any]:
+        """Return default cleaning configuration"""
+        return {
+            "header_patterns": ["^#\\w+", "^(VIP|🔥|ENTRY)\\b", "^[*]{2,}.*[*]{2,}$"],
+            "footer_patterns": ["shared by .*", "autocopy.*", "join .*"],
+            "mention_patterns": ["@\\w+", "@everyone", "@here"],
+            "spam_patterns": ["🔥{3,}", "!{3,}", "\\?{3,}", "\\.{4,}"],
+            "edit_trap_threshold": 3,
+            "max_message_length": 4000
+        }
+    
+    def clean_discord_message(self, text: str, message_id: str = None) -> Tuple[str, bool]:
+        """
+        Main message cleaning function
+        
+        Args:
+            text: Raw Discord message text
+            message_id: Discord message ID for edit tracking
+            
+        Returns:
+            Tuple[cleaned_text, is_trap]
+        """
+        if not text or not text.strip():
+            return "", False
+        
+        original_text = text
+        is_trap = False
+        trap_reasons = []
+        
+        try:
+            # 1. Check for edit traps
+            if message_id:
+                edit_count = self.edit_counts.get(message_id, 0)
+                if edit_count >= self.config.get('edit_trap_threshold', 3):
+                    is_trap = True
+                    trap_reasons.append(f"edit_trap_count_{edit_count}")
+                    self.cleaner_logger.warning(f"Edit trap detected for message {message_id}: {edit_count} edits")
+            
+            # 2. Remove mentions while preserving context
+            text = self._remove_mentions(text)
+            
+            # 3. Remove header patterns
+            text, header_removed = self._remove_header_patterns(text)
+            if header_removed:
+                trap_reasons.append("header_pattern")
+            
+            # 4. Remove footer patterns
+            text, footer_removed = self._remove_footer_patterns(text)
+            if footer_removed:
+                trap_reasons.append("footer_pattern")
+            
+            # 5. Clean spam patterns while preserving formatting
+            text = self._clean_spam_patterns(text)
+            
+            # 6. Normalize formatting
+            text = self._normalize_formatting(text)
+            
+            # 7. Check for specific trap text patterns
+            text = text.strip()
+            trap_patterns = self.config.get('trap_text_patterns', [])
+            for pattern in trap_patterns:
+                if re.match(pattern, text, re.IGNORECASE):
+                    is_trap = True
+                    trap_reasons.append(f"trap_pattern_{pattern}")
+                    break
+            
+            # 8. Final validation
+            # Check if message became empty or too short after cleaning
+            if len(text) < 3 or text.lower() in ['...', '..', '.', 'edit', 'deleted']:
+                is_trap = True
+                trap_reasons.append("content_too_short")
+            
+            # Check maximum length
+            if len(text) > self.config.get('max_message_length', 4000):
+                text = text[:self.config.get('max_message_length', 4000)] + "..."
+                self.cleaner_logger.info(f"Message truncated to {self.config.get('max_message_length', 4000)} characters")
+            
+            # Log cleaning action
+            if trap_reasons or len(text) != len(original_text):
+                self.cleaner_logger.info(
+                    f"Message cleaned: trap={is_trap}, reasons={trap_reasons}, "
+                    f"original_length={len(original_text)}, cleaned_length={len(text)}"
+                )
+            
+            return text, is_trap
+            
+        except Exception as e:
+            self.cleaner_logger.error(f"Error cleaning message: {e}")
+            return original_text, False
+    
+    def _remove_mentions(self, text: str) -> str:
+        """Remove Discord mentions while preserving context"""
+        mention_patterns = self.config.get('mention_patterns', ['@\\w+', '@everyone', '@here'])
+        
+        for pattern in mention_patterns:
+            # Remove mentions but preserve surrounding context
+            text = re.sub(pattern, '', text, flags=re.IGNORECASE)
+        
+        # Clean up extra whitespace left by mention removal
+        text = re.sub(r'\s+', ' ', text)
+        return text.strip()
+    
+    def _remove_header_patterns(self, text: str) -> Tuple[str, bool]:
+        """Remove header trap patterns"""
+        lines = text.split('\n')
+        header_patterns = self.config.get('header_patterns', [])
+        removed = False
+        
+        # Remove lines from the beginning that match header patterns
+        while lines and header_patterns:
+            line = lines[0].strip()
+            if not line:
+                lines.pop(0)
+                continue
+                
+            line_removed = False
+            for pattern in header_patterns:
+                if re.match(pattern, line, re.IGNORECASE | re.UNICODE):
+                    lines.pop(0)
+                    removed = True
+                    line_removed = True
+                    self.cleaner_logger.info(f"Removed header pattern: {line[:50]}...")
+                    break
+            
+            if not line_removed:
+                break
+        
+        return '\n'.join(lines), removed
+    
+    def _remove_footer_patterns(self, text: str) -> Tuple[str, bool]:
+        """Remove footer trap patterns"""
+        lines = text.split('\n')
+        footer_patterns = self.config.get('footer_patterns', [])
+        removed = False
+        
+        # Remove lines from the end that match footer patterns
+        while lines and footer_patterns:
+            line = lines[-1].strip()
+            if not line:
+                lines.pop()
+                continue
+                
+            line_removed = False
+            for pattern in footer_patterns:
+                if re.search(pattern, line, re.IGNORECASE | re.UNICODE):
+                    lines.pop()
+                    removed = True
+                    line_removed = True
+                    self.cleaner_logger.info(f"Removed footer pattern: {line[:50]}...")
+                    break
+            
+            if not line_removed:
+                break
+        
+        return '\n'.join(lines), removed
+    
+    def _clean_spam_patterns(self, text: str) -> str:
+        """Clean spam patterns while preserving formatting"""
+        spam_patterns = self.config.get('spam_patterns', [])
+        
+        for pattern in spam_patterns:
+            if pattern == "🔥{3,}":
+                # Replace multiple fire emojis with single one
+                text = re.sub(r'🔥{3,}', '🔥', text)
+            elif pattern == "!{3,}":
+                # Replace multiple exclamation marks with single one
+                text = re.sub(r'!{3,}', '!', text)
+            elif pattern == "\\?{3,}":
+                # Replace multiple question marks with single one
+                text = re.sub(r'\?{3,}', '?', text)
+            elif pattern == "\\.{4,}":
+                # Replace multiple dots with ellipsis
+                text = re.sub(r'\.{4,}', '...', text)
+            else:
+                # Generic pattern replacement
+                text = re.sub(pattern, '', text)
+        
+        return text
+    
+    def _normalize_formatting(self, text: str) -> str:
+        """Normalize formatting while preserving Telegram-compatible formatting"""
+        # Preserve important formatting patterns for Telegram
+        # Bold: **text** or __text__ -> keep as is
+        # Italic: *text* or _text_ -> keep as is
+        # Links: [text](url) -> keep as is
+        
+        # Remove excessive whitespace but preserve paragraph breaks
+        text = re.sub(r' +', ' ', text)  # Multiple spaces to single space
+        text = re.sub(r'\n\s*\n\s*\n+', '\n\n', text)  # Multiple newlines to double newline
+        text = re.sub(r'^\s+|\s+$', '', text, flags=re.MULTILINE)  # Trim line whitespace
+        
+        return text.strip()
+    
+    def increment_edit_count(self, message_id: str) -> int:
+        """Increment edit count for a message and return new count"""
+        if message_id not in self.edit_counts:
+            self.edit_counts[message_id] = 0
+        self.edit_counts[message_id] += 1
+        
+        count = self.edit_counts[message_id]
+        self.cleaner_logger.info(f"Message {message_id} edit count: {count}")
+        
+        return count
+    
+    def cleanup_old_edit_counts(self, max_age_hours: int = 24):
+        """Clean up old edit count entries"""
+        # In a real implementation, you'd track timestamps
+        # For now, just limit the size of the dict
+        if len(self.edit_counts) > 1000:
+            # Remove oldest entries (simplified approach)
+            oldest_keys = list(self.edit_counts.keys())[:500]
+            for key in oldest_keys:
+                del self.edit_counts[key]
+            self.cleaner_logger.info("Cleaned up old edit counts")
 
 class MessageMapping:
     """Track message relationships between Discord and Telegram"""
@@ -170,6 +424,8 @@ class AutoForwardXBot(commands.Bot):
         super().__init__(command_prefix='!', intents=intents)
         
         self.message_mapping = MessageMapping()
+        self.message_cleaner = MessageCleaner()  # Initialize the message cleaner
+        
         # Import enhanced poster
         import sys
         sys.path.append('.')
@@ -286,25 +542,39 @@ class AutoForwardXBot(commands.Bot):
             return
         
         # Extract original content from embed or message
-        content = self.extract_message_content(message)
-        if not content:
+        raw_content = self.extract_message_content(message)
+        if not raw_content:
             return
         
-        # Check for blocked content
-        if self.is_text_blocked(content, pair_config['pair_name']):
+        # Use the advanced message cleaner
+        cleaned_content, is_trap = self.message_cleaner.clean_discord_message(
+            raw_content, str(message.id)
+        )
+        
+        if is_trap:
+            logger.warning(f"Message marked as trap by cleaner in pair: {pair_config['pair_name']}")
+            await self.handle_trap_detection("advanced_cleaner_trap", pair_config, message)
+            return
+        
+        if not cleaned_content or len(cleaned_content.strip()) < 3:
+            logger.info(f"Message too short after cleaning in pair {pair_config['pair_name']}")
+            return
+        
+        # Legacy blocklist check (for backward compatibility)
+        if self.is_text_blocked(cleaned_content, pair_config['pair_name']):
             logger.warning(f"Blocked content detected in pair: {pair_config['pair_name']}")
             return
         
-        # Check for trap patterns
-        trap_type = self.detect_trap_patterns(content)
+        # Legacy trap detection (for backward compatibility)
+        trap_type = self.detect_trap_patterns(cleaned_content)
         if trap_type:
-            logger.warning(f"Trap detected ({trap_type}) in pair: {pair_config['pair_name']}")
+            logger.warning(f"Legacy trap detected ({trap_type}) in pair: {pair_config['pair_name']}")
             await self.handle_trap_detection(trap_type, pair_config, message)
             return
         
-        # Forward to Telegram
+        # Forward cleaned content to Telegram
         telegram_msg_id = await self.telegram_poster.post_to_telegram(
-            content, pair_config, str(message.id)
+            cleaned_content, pair_config, str(message.id)
         )
         
         if telegram_msg_id:
@@ -358,14 +628,18 @@ class AutoForwardXBot(commands.Bot):
         if not mapping:
             return
         
-        # Check edit count for trap detection
-        edit_count = self.message_mapping.increment_edit_count(str(after.id))
-        if edit_count >= 3:
-            logger.warning(f"Edit trap detected: {mapping['pair_name']} (count: {edit_count})")
+        # Use the message cleaner's edit tracking
+        edit_count = self.message_cleaner.increment_edit_count(str(after.id))
+        
+        # Also update legacy mapping for compatibility
+        legacy_count = self.message_mapping.increment_edit_count(str(after.id))
+        
+        if edit_count >= self.message_cleaner.config.get('edit_trap_threshold', 3):
+            logger.warning(f"Edit trap detected by cleaner: {mapping['pair_name']} (count: {edit_count})")
             # Find pair config and handle trap
             pair_config = self.find_pair_by_channel(after.channel.id)
             if pair_config:
-                await self.handle_trap_detection("edit_trap", pair_config, after)
+                await self.handle_trap_detection("edit_trap_cleaner", pair_config, after)
             return
         
         # Extract new content

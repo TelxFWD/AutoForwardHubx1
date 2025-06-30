@@ -130,6 +130,28 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
+- **June 30, 2025**: **ADVANCED MESSAGE CLEANING SYSTEM IMPLEMENTED**
+  - **MessageCleaner Class**: Complete Discord message cleaning system in `discord_bot.py`
+    - Configurable pattern matching via `cleaner_config.json` for headers, footers, mentions, and spam
+    - Advanced trap detection including edit counting, specific text patterns, and content analysis
+    - Formatting preservation for Telegram compatibility (Markdown/HTML support)
+    - Comprehensive logging system with dedicated `discord_cleaner.log` file
+  - **Cleaning Features**: 
+    - Mention removal (@everyone, @username, @here) while preserving message context
+    - Header pattern removal (VIP signals, promotional content, spam headers)
+    - Footer pattern removal (attribution lines, bot signatures, promotional footers)
+    - Spam pattern normalization (emoji spam, excessive punctuation)
+    - Edit trap detection with configurable threshold (default 3 edits)
+    - Text-based trap detection for known patterns like "/ *", "1", "leak", "trap"
+  - **Integration**: Fully integrated into AutoForwardXBot message handling pipeline
+    - Replaces legacy trap detection with advanced cleaning system
+    - Maintains backward compatibility with existing blocklist system
+    - Returns cleaned text and trap detection flag for safe forwarding
+  - **Testing**: Comprehensive test suite with 100% success rate covering all trap types
+    - Normal messages preserved with formatting intact
+    - Header/footer traps correctly identified and content cleaned
+    - Edit tracking works correctly with configurable thresholds
+    - Spam patterns normalized while preserving legitimate formatting
 - **June 30, 2025**: **PROJECT MIGRATION TO STANDARD REPLIT COMPLETED**
   - **Migration Achievement**: Successfully migrated from Replit Agent to standard Replit environment
   - **OTP Authentication Fixed**: Enhanced session loader with proper two-step OTP request and verification

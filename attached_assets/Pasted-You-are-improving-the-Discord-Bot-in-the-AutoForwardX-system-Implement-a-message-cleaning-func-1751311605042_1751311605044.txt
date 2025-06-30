@@ -1,0 +1,93 @@
+You are improving the Discord Bot in the AutoForwardX system.
+
+Implement a **message cleaning function** that:
+- Removes traps and spam patterns
+- Preserves original formatting for Telegram (Markdown or HTML)
+- Returns the cleaned message with a flag indicating if it's safe
+
+---
+
+## 🎯 Function Name:
+```python
+def clean_discord_message(text: str) -> Tuple[str, bool]
+Input: raw text from Discord webhook
+
+Output: cleaned text, and is_trap: bool
+
+🔧 Required Cleaning Features (But Preserve Format)
+🔕 1. Mention Removal (but preserve message context)
+Remove all @username, @everyone, @here
+
+Regex: @\\w+
+
+Do not remove surrounding text or breaks
+
+🏷 2. Header/Footer Removal
+Remove leading lines matching trap patterns:
+
+#VIP, ***SIGNAL***, 🔥🔥🔥 JOIN, shared by @.*
+
+Remove trailing lines like:
+
+“AutoCopy Bot v2”, “Join our server”, “copied by …”
+
+Load these from cleaner_config.json:
+
+json
+Copy
+Edit
+{
+  "header_patterns": ["^#\\w+", "^(VIP|🔥|ENTRY)\\b", "^[*]{2,}.*[*]{2,}$"],
+  "footer_patterns": ["shared by .*", "autocopy.*", "join .*"]
+}
+🔁 3. Edit Trap Detection
+Track message edit counts
+
+If edited > 3 times, mark as trap
+
+Return is_trap = True without forwarding
+
+✨ 4. Formatting Preservation
+Do not remove:
+
+Bold: **text** or __text__
+
+Italics: _text_ or *text*
+
+Links: [label](http...)
+
+Emoji 👍, 🔥, ✅
+
+Normalize:
+
+Emoji spam: 🔥🔥🔥 → 🔥
+
+Repeated punctuation: !!! → !
+
+Trim whitespace without affecting formatting blocks
+
+📋 Logging & Reporting
+Log all actions to discord_cleaner.log
+
+If a trap is detected:
+
+Log trap type (edit, header, footer, mention)
+
+Optionally send alert to Admin Bot
+
+✅ Requirements
+Function must be modular and testable
+
+Load cleaning patterns from JSON
+
+Fully compatible with Telegram poster bot’s formatting
+
+Return final cleaned str and is_trap: bool
+
+Example:
+
+python
+Copy
+Edit
+cleaned_text, is_trap = clean_discord_message(original_discord_text)
+Please build this inside the Discord bot module (discord_bot.py or discord_cleaner.py) and use it before relaying messages to Telegram.

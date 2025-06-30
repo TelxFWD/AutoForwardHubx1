@@ -1,0 +1,54 @@
+{
+  "header_patterns": [
+    "^#\\w+",
+    "^(VIP|🔥|ENTRY|SIGNAL|PREMIUM)\\b",
+    "^[*]{2,}.*[*]{2,}$",
+    "^🔥{2,}.*JOIN",
+    "^\\*\\*\\*SIGNAL\\*\\*\\*",
+    "^(FREE|PAID)\\s+(SIGNAL|CHANNEL|GROUP)",
+    "^JOIN\\s+(NOW|US|HERE)",
+    "^EXCLUSIVE\\s+CONTENT"
+  ],
+  "trap_text_patterns": [
+    "^/ \\*$",
+    "^/\\*$", 
+    "^/ $",
+    "^1$",
+    "^leak$",
+    "^trap$",
+    "^edit this$",
+    "^\\.$",
+    "^\\.\\.$",
+    "^\\.\\.\\.$"
+  ],
+  "footer_patterns": [
+    "shared by.*",
+    "autocopy.*",
+    "join.*",
+    "AutoCopy Bot.*",
+    "Join our server.*",
+    "copied by.*",
+    "forwarded by.*",
+    "bot v\\d+.*",
+    "subscribe.*channel",
+    "follow.*telegram",
+    ".*@\\w+.*$"
+  ],
+  "mention_patterns": [
+    "@\\w+",
+    "@everyone",
+    "@here"
+  ],
+  "spam_patterns": [
+    "🔥{3,}",
+    "!{3,}",
+    "\\?{3,}",
+    "\\.{4,}",
+    "#{3,}",
+    "\\*{5,}",
+    "={3,}",
+    "-{4,}"
+  ],
+  "edit_trap_threshold": 3,
+  "max_message_length": 4000
+}
