@@ -33,7 +33,7 @@ export const pairs = pgTable("pairs", {
   botToken: text("bot_token"), // Optional for telegram pairs
   telegramBotId: integer("telegram_bot_id").references(() => telegramBots.id),
   discordBotId: integer("discord_bot_id").references(() => discordBots.id),
-  session: text("session").notNull(),
+  session: text("session_name").notNull(),
   status: text("status").notNull().default("active"), // active, paused, error
   enableAI: boolean("enable_ai").default(false),
   // Telegram-specific fields

@@ -403,6 +403,7 @@ export class MemStorage implements IStorage {
   private activities = new Map<number, Activity>();
   private otpVerifications = new Map<string, OtpVerification>();
   private discordBots = new Map<number, DiscordBot>();
+  private telegramBots = new Map<number, TelegramBot>();
   private systemStats: SystemStats | undefined;
   private nextUserId = 1;
   private nextPairId = 1;
@@ -411,6 +412,7 @@ export class MemStorage implements IStorage {
   private nextActivityId = 1;
   private nextOtpId = 1;
   private nextDiscordBotId = 1;
+  private nextTelegramBotId = 1;
 
   constructor() {
     this.initializeUsers();
@@ -751,8 +753,7 @@ export class MemStorage implements IStorage {
     return this.discordBots.delete(id);
   }
 
-  // Telegram Bot Management
-  private telegramBots = new Map<number, TelegramBot>();
+  // Telegram Bot Management methods
 
   async getAllTelegramBots(userId?: number): Promise<TelegramBot[]> {
     const bots = Array.from(this.telegramBots.values());
@@ -764,7 +765,7 @@ export class MemStorage implements IStorage {
   }
 
   async createTelegramBot(bot: InsertTelegramBot): Promise<TelegramBot> {
-    const id = Date.now();
+    const id = this.nextTelegramBotId++;
     const newBot: TelegramBot = {
       ...bot,
       id,
@@ -798,7 +799,7 @@ export class MemStorage implements IStorage {
 
   async setDefaultTelegramBot(userId: number, botId: number): Promise<boolean> {
     // First, unset all defaults for this user
-    for (const [id, bot] of this.telegramBots) {
+    for (const [id, bot] of Array.from(this.telegramBots.entries())) {
       if (bot.userId === userId) {
         this.telegramBots.set(id, { ...bot, isDefault: false });
       }
