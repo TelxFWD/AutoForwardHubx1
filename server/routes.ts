@@ -2241,7 +2241,12 @@ if __name__ == "__main__":
   app.get("/api/discord/bots", async (req, res) => {
     try {
       const userId = req.query.userId ? parseInt(req.query.userId as string) : undefined;
+      console.log("=== DISCORD BOT FETCH DEBUG ===");
+      console.log("Query userId:", userId);
+      
       const bots = await storage.getAllDiscordBots(userId);
+      console.log("Found bots:", bots);
+      
       res.json(bots);
     } catch (error) {
       console.error("Error fetching Discord bots:", error);
@@ -2252,23 +2257,23 @@ if __name__ == "__main__":
   app.post("/api/discord/bots", async (req, res) => {
     try {
       const botData = insertDiscordBotSchema.parse(req.body);
+      console.log("=== DISCORD BOT CREATION DEBUG ===");
+      console.log("Input data:", botData);
       
-      // Validate bot token
-      const validation = await discordService.validateBotToken(botData.token);
-      if (!validation.valid) {
-        return res.status(400).json({ message: validation.error });
-      }
-
-      // Get guild count
-      const guilds = await discordService.getBotGuilds(botData.token);
-      
-      const bot = await storage.createDiscordBot({
+      // Set default status if not provided
+      const botDataWithDefaults = {
         ...botData,
-        guilds: guilds.success ? guilds.guilds?.length || 0 : 0,
+        status: botData.status || 'active',
+        guilds: 0,
         lastPing: new Date(),
-      });
+      };
+      
+      console.log("Bot data with defaults:", botDataWithDefaults);
+      
+      const bot = await storage.createDiscordBot(botDataWithDefaults);
+      console.log("Created bot:", bot);
 
-      res.json(bot);
+      res.status(201).json(bot);
     } catch (error) {
       console.error("Error creating Discord bot:", error);
       res.status(500).json({ message: "Failed to create Discord bot" });
