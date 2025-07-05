@@ -245,6 +245,13 @@ export class MemStorage implements IStorage {
       displayName: "Test User",
       isActive: true,
     });
+    
+    this.createUser({
+      pin: "5599",
+      pinHash: "$2b$10$example.hash.for.admin3",
+      displayName: "Main User",
+      isActive: true,
+    });
   }
 
   async getUser(id: number): Promise<User | undefined> {
