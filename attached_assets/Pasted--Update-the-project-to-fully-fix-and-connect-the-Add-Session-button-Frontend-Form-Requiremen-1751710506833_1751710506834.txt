@@ -1,0 +1,90 @@
+"Update the project to fully fix and connect the 'Add Session' button.
+
+✔️ Frontend:
+Form Requirements:
+
+Collect:
+
+sessionName (string)
+
+phoneNumber (string with country code)
+
+sessionFileName (optional string)
+
+Request Flow:
+
+On clicking Create Session:
+
+Send a POST request to /api/sessions/request-otp with the body:
+
+json
+Copy
+Edit
+{
+  "sessionName": "0x1",
+  "phoneNumber": "+917558572503",
+  "sessionFileName": "x" // Optional
+}
+Set Content-Type: application/json header.
+
+Success Flow:
+
+If the backend returns OTP Sent Successfully, open a new modal to allow user to input the received OTP.
+
+On OTP submission, send a POST request to /api/sessions/verify-otp with:
+
+json
+Copy
+Edit
+{
+  "phoneNumber": "+917558572503",
+  "otp": "12345"
+}
+On success, show Session Created Successfully toast/notification and reload the session list.
+
+✔️ Backend:
+Ensure that the following endpoints are properly connected and working:
+
+POST /api/sessions/request-otp
+
+Starts the Telethon OTP request process using request_otp() function.
+
+Sends OTP to the provided phone number.
+
+Saves the phone_code_hash and session name temporarily (in-memory or database).
+
+POST /api/sessions/verify-otp
+
+Uses the stored phone_code_hash to verify the OTP with Telethon.
+
+On success:
+
+Save the session file to the sessions/ directory with the session name or auto-generated filename.
+
+Store session metadata in the database (session name, phone number, session file path).
+
+Mark the session as active.
+
+✔️ Additional Requirements:
+Automatically load the newly created session into the message copier module to use for Telegram reading.
+
+Store session details in a multi-user friendly way (per-user session isolation).
+
+Ensure error handling for:
+
+Incorrect OTP.
+
+Expired phone_code_hash.
+
+Invalid phone numbers.
+
+Display backend validation errors properly on the frontend.
+
+✔️ Deliverables:
+Fully working Add Session button with OTP request and verification.
+
+Sessions stored correctly and available for Telegram message copying.
+
+Clean frontend feedback for success and failure.
+
+Proper session file storage and database linkage.

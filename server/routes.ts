@@ -349,6 +349,173 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // OTP Session endpoints
+  app.post("/api/sessions/request-otp", async (req, res) => {
+    try {
+      const { sessionName, phoneNumber, sessionFileName } = req.body;
+      
+      if (!sessionName || !phoneNumber) {
+        return res.status(400).json({ message: "sessionName and phoneNumber are required" });
+      }
+      
+      // Use Python subprocess to handle OTP request
+      const { spawn } = await import("child_process");
+      const pythonProcess = spawn("python", [
+        "telegram_copier/session_loader.py",
+        "--phone", phoneNumber,
+        "--session-name", sessionFileName || sessionName
+      ]);
+      
+      let output = "";
+      let errorOutput = "";
+      
+      pythonProcess.stdout.on("data", (data) => {
+        output += data.toString();
+      });
+      
+      pythonProcess.stderr.on("data", (data) => {
+        errorOutput += data.toString();
+      });
+      
+      pythonProcess.on("close", async (code) => {
+        try {
+          if (code === 0) {
+            const result = JSON.parse(output.trim());
+            
+            // Log activity
+            await storage.createActivity({
+              type: "otp_request",
+              message: `OTP requested for ${phoneNumber}`,
+              details: `Session: ${sessionName} - ${result.message}`,
+              severity: result.status === "otp_sent" ? "success" : "info",
+            });
+            
+            res.json({
+              message: "OTP sent successfully",
+              sessionName: sessionName,
+              status: result.status,
+              details: result.message
+            });
+          } else {
+            console.error("Python process error:", errorOutput);
+            const errorMsg = errorOutput.includes("Phone number invalid") ? 
+              "Phone number is invalid or banned" : 
+              "Failed to send OTP";
+            
+            await storage.createActivity({
+              type: "otp_request",
+              message: `OTP request failed for ${phoneNumber}`,
+              details: errorMsg,
+              severity: "error",
+            });
+            
+            res.status(400).json({ message: errorMsg });
+          }
+        } catch (parseError) {
+          console.error("Failed to parse Python output:", output, errorOutput);
+          res.status(500).json({ message: "Failed to process OTP request" });
+        }
+      });
+      
+    } catch (error) {
+      console.error("OTP request error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post("/api/sessions/verify-otp", async (req, res) => {
+    try {
+      const { phoneNumber, otp } = req.body;
+      
+      if (!phoneNumber || !otp) {
+        return res.status(400).json({ message: "phoneNumber and otp are required" });
+      }
+      
+      // Use Python subprocess to handle OTP verification
+      const { spawn } = await import("child_process");
+      const pythonProcess = spawn("python", [
+        "telegram_copier/session_loader.py",
+        "--phone", phoneNumber,
+        "--otp", otp
+      ]);
+      
+      let output = "";
+      let errorOutput = "";
+      
+      pythonProcess.stdout.on("data", (data) => {
+        output += data.toString();
+      });
+      
+      pythonProcess.stderr.on("data", (data) => {
+        errorOutput += data.toString();
+      });
+      
+      pythonProcess.on("close", async (code) => {
+        try {
+          if (code === 0) {
+            const result = JSON.parse(output.trim());
+            
+            if (result.status === "success") {
+              // Create session in database
+              const session = await storage.createSession({
+                name: result.session_name,
+                phone: phoneNumber,
+                sessionFile: `sessions/${result.session_name}.session`,
+                status: "active",
+                userId: 1 // Default user for now
+              });
+              
+              // Log activity
+              await storage.createActivity({
+                type: "session_created",
+                message: `Session created successfully: ${result.session_name}`,
+                details: `Phone: ${phoneNumber} - User: ${result.user_info?.first_name || 'Unknown'}`,
+                sessionId: session.id,
+                severity: "success",
+              });
+              
+              res.json({
+                message: "Session created successfully",
+                session: session,
+                userInfo: result.user_info
+              });
+            } else {
+              await storage.createActivity({
+                type: "otp_verification",
+                message: `OTP verification failed for ${phoneNumber}`,
+                details: result.message,
+                severity: "error",
+              });
+              
+              res.status(400).json({ message: result.message });
+            }
+          } else {
+            console.error("Python process error:", errorOutput);
+            const errorMsg = errorOutput.includes("Invalid code") ? 
+              "Invalid OTP code" : 
+              "Failed to verify OTP";
+              
+            await storage.createActivity({
+              type: "otp_verification",
+              message: `OTP verification failed for ${phoneNumber}`,
+              details: errorMsg,
+              severity: "error",
+            });
+            
+            res.status(400).json({ message: errorMsg });
+          }
+        } catch (parseError) {
+          console.error("Failed to parse Python output:", output, errorOutput);
+          res.status(500).json({ message: "Failed to process OTP verification" });
+        }
+      });
+      
+    } catch (error) {
+      console.error("OTP verification error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   // Blocklists routes
   app.get("/api/blocklists", async (req, res) => {
     try {

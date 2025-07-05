@@ -57,6 +57,18 @@ export class AuthStorage implements IAuthStorage {
           isActive: true,
         });
       }
+
+      // Check if user 5599 exists
+      const user5599 = await storage.getUserByPin("5599");
+      if (!user5599) {
+        const hashedPin = await bcrypt.hash("5599", 10);
+        await storage.createUser({
+          pin: "5599",
+          pinHash: hashedPin,
+          displayName: "Main User",
+          isActive: true,
+        });
+      }
     } catch (error) {
       console.log("Using existing users from storage");
     }

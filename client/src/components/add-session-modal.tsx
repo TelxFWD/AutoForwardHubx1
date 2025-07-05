@@ -18,46 +18,54 @@ interface AddSessionModalProps {
 export default function AddSessionModal({ isOpen, onClose }: AddSessionModalProps) {
   const [step, setStep] = useState<'form' | 'otp' | 'success'>('form');
   const [otpCode, setOtpCode] = useState("");
-  const [sessionId, setSessionId] = useState<number | null>(null);
-  const [formData, setFormData] = useState<InsertSession>({
-    name: "",
-    phone: "",
-    sessionFile: "",
-    status: "inactive",
+  const [sessionName, setSessionName] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [formData, setFormData] = useState({
+    sessionName: "",
+    phoneNumber: "",
+    sessionFileName: "",
   });
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const createSessionMutation = useMutation({
-    mutationFn: (data: InsertSession) => apiRequest("POST", "/api/sessions", data),
+  const requestOtpMutation = useMutation({
+    mutationFn: (data: { sessionName: string; phoneNumber: string; sessionFileName?: string }) => 
+      apiRequest("/api/sessions/request-otp", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
     onSuccess: (response: any) => {
-      setSessionId(response.id);
+      setSessionName(response.sessionName);
+      setPhoneNumber(formData.phoneNumber);
       setStep('otp');
       toast({
-        title: "Session Created",
-        description: "Please check your phone for Telegram OTP code",
+        title: "OTP Sent",
+        description: "Please check your phone for Telegram verification code",
       });
     },
     onError: (error: any) => {
       toast({
         title: "Error",
-        description: error.message || "Failed to create session",
+        description: error.message || "Failed to send OTP",
         variant: "destructive",
       });
     },
   });
 
   const verifyOtpMutation = useMutation({
-    mutationFn: (data: { sessionId: number; otpCode: string }) => 
-      apiRequest("POST", `/api/sessions/${data.sessionId}/verify-otp`, { otpCode: data.otpCode }),
-    onSuccess: () => {
+    mutationFn: (data: { phoneNumber: string; otp: string }) => 
+      apiRequest("/api/sessions/verify-otp", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    onSuccess: (response: any) => {
       setStep('success');
       queryClient.invalidateQueries({ queryKey: ["/api/sessions"] });
       queryClient.invalidateQueries({ queryKey: ["/api/stats"] });
       toast({
         title: "Success",
-        description: "Session verified and activated successfully!",
+        description: "Session created and activated successfully!",
       });
       setTimeout(() => {
         onClose();
@@ -76,17 +84,17 @@ export default function AddSessionModal({ isOpen, onClose }: AddSessionModalProp
   const resetForm = () => {
     setStep('form');
     setOtpCode("");
-    setSessionId(null);
+    setSessionName("");
+    setPhoneNumber("");
     setFormData({
-      name: "",
-      phone: "",
-      sessionFile: "",
-      status: "inactive",
+      sessionName: "",
+      phoneNumber: "",
+      sessionFileName: "",
     });
   };
 
   const handleVerifyOtp = () => {
-    if (!otpCode.trim() || !sessionId) {
+    if (!otpCode.trim() || !phoneNumber) {
       toast({
         title: "Invalid Input",
         description: "Please enter the OTP code",
@@ -94,14 +102,14 @@ export default function AddSessionModal({ isOpen, onClose }: AddSessionModalProp
       });
       return;
     }
-    verifyOtpMutation.mutate({ sessionId, otpCode: otpCode.trim() });
+    verifyOtpMutation.mutate({ phoneNumber, otp: otpCode.trim() });
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
     // Basic validation
-    if (!formData.name || !formData.phone) {
+    if (!formData.sessionName || !formData.phoneNumber) {
       toast({
         title: "Validation Error",
         description: "Please fill in session name and phone number",
@@ -110,16 +118,24 @@ export default function AddSessionModal({ isOpen, onClose }: AddSessionModalProp
       return;
     }
 
-    // Auto-generate session file name if not provided
-    const sessionFile = formData.sessionFile || `${formData.name.toLowerCase().replace(/\s+/g, '_')}.session`;
+    // Validate phone number format
+    if (!formData.phoneNumber.startsWith('+')) {
+      toast({
+        title: "Invalid Phone Number",
+        description: "Phone number must include country code (e.g., +1234567890)",
+        variant: "destructive",
+      });
+      return;
+    }
     
-    createSessionMutation.mutate({
-      ...formData,
-      sessionFile,
+    requestOtpMutation.mutate({
+      sessionName: formData.sessionName,
+      phoneNumber: formData.phoneNumber,
+      sessionFileName: formData.sessionFileName,
     });
   };
 
-  const handleInputChange = (field: keyof InsertSession, value: any) => {
+  const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
@@ -133,8 +149,8 @@ export default function AddSessionModal({ isOpen, onClose }: AddSessionModalProp
               <Input
                 id="sessionName"
                 placeholder="e.g., Main Account, Secondary Bot"
-                value={formData.name}
-                onChange={(e) => handleInputChange("name", e.target.value)}
+                value={formData.sessionName}
+                onChange={(e) => handleInputChange("sessionName", e.target.value)}
                 className="mt-2"
               />
             </div>
@@ -147,8 +163,8 @@ export default function AddSessionModal({ isOpen, onClose }: AddSessionModalProp
                   id="phone"
                   type="tel"
                   placeholder="+1234567890"
-                  value={formData.phone}
-                  onChange={(e) => handleInputChange("phone", e.target.value)}
+                  value={formData.phoneNumber}
+                  onChange={(e) => handleInputChange("phoneNumber", e.target.value)}
                   className="pl-10"
                 />
               </div>
@@ -162,8 +178,8 @@ export default function AddSessionModal({ isOpen, onClose }: AddSessionModalProp
               <Input
                 id="sessionFile"
                 placeholder="Auto-generated from session name"
-                value={formData.sessionFile}
-                onChange={(e) => handleInputChange("sessionFile", e.target.value)}
+                value={formData.sessionFileName}
+                onChange={(e) => handleInputChange("sessionFileName", e.target.value)}
                 className="mt-2"
               />
               <p className="text-xs text-gray-500 mt-1">
@@ -177,10 +193,10 @@ export default function AddSessionModal({ isOpen, onClose }: AddSessionModalProp
               </Button>
               <Button 
                 type="submit" 
-                disabled={createSessionMutation.isPending}
+                disabled={requestOtpMutation.isPending}
                 className="bg-primary text-white hover:bg-blue-700"
               >
-                {createSessionMutation.isPending ? "Creating..." : "Create Session"}
+                {requestOtpMutation.isPending ? "Sending OTP..." : "Create Session"}
               </Button>
             </div>
           </form>
@@ -193,7 +209,7 @@ export default function AddSessionModal({ isOpen, onClose }: AddSessionModalProp
               <Shield className="w-12 h-12 text-blue-500 mx-auto mb-4" />
               <h3 className="text-lg font-semibold">OTP Verification Required</h3>
               <p className="text-sm text-gray-600 mt-2">
-                Telegram has sent a verification code to {formData.phone}
+                Telegram has sent a verification code to {phoneNumber}
               </p>
             </div>
             
