@@ -119,10 +119,13 @@ export function AdminPage() {
   };
 
   const handleCreateUser = () => {
-    if (!newUserPin || !newUserName) {
+    console.log("Creating user with PIN:", newUserPin, "Name:", newUserName);
+    console.log("PIN length:", newUserPin.length, "PIN type:", typeof newUserPin);
+    
+    if (!newUserPin || newUserPin.length !== 4 || !newUserName) {
       toast({
         title: "Error",
-        description: "Please fill in all fields",
+        description: "Please enter a 4-digit PIN and display name",
         variant: "destructive",
       });
       return;
@@ -243,7 +246,13 @@ export function AdminPage() {
                   Create new users and manage existing accounts
                 </CardDescription>
               </div>
-              <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+              <Dialog open={showCreateDialog} onOpenChange={(open) => {
+                setShowCreateDialog(open);
+                if (!open) {
+                  setNewUserPin("");
+                  setNewUserName("");
+                }
+              }}>
                 <DialogTrigger asChild>
                   <Button>
                     <Plus className="w-4 h-4 mr-2" />
@@ -275,7 +284,7 @@ export function AdminPage() {
                         <PinInput
                           length={4}
                           onComplete={(pin) => setNewUserPin(pin)}
-                          key={newUserPin}
+                          reset={!showCreateDialog}
                         />
                       </div>
                     </div>
@@ -284,7 +293,11 @@ export function AdminPage() {
                   <DialogFooter>
                     <Button
                       variant="outline"
-                      onClick={() => setShowCreateDialog(false)}
+                      onClick={() => {
+                        setShowCreateDialog(false);
+                        setNewUserPin("");
+                        setNewUserName("");
+                      }}
                     >
                       Cancel
                     </Button>

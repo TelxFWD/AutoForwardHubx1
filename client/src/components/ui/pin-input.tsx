@@ -4,12 +4,20 @@ import { cn } from "@/lib/utils";
 interface PinInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   length?: number;
   onComplete?: (pin: string) => void;
+  reset?: boolean;
 }
 
 const PinInput = React.forwardRef<HTMLInputElement, PinInputProps>(
-  ({ className, length = 4, onComplete, ...props }, ref) => {
+  ({ className, length = 4, onComplete, reset, ...props }, ref) => {
     const [values, setValues] = React.useState<string[]>(new Array(length).fill(""));
     const inputRefs = React.useRef<HTMLInputElement[]>([]);
+
+    // Reset values when reset prop changes
+    React.useEffect(() => {
+      if (reset) {
+        setValues(new Array(length).fill(""));
+      }
+    }, [reset, length]);
 
     const handleChange = (index: number, value: string) => {
       // Only allow digits
