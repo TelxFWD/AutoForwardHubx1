@@ -111,6 +111,7 @@ export default function AddPairModal({ isOpen, onClose }: AddPairModalProps) {
       autoWebhook: false,
       destinationChannel: "",
       botToken: "",
+      telegramBotId: "",
       session: "",
       status: "active",
       enableAI: false,
@@ -311,7 +312,7 @@ export default function AddPairModal({ isOpen, onClose }: AddPairModalProps) {
                 </SelectTrigger>
                 <SelectContent>
                   {telegramBots.length === 0 ? (
-                    <SelectItem value="" disabled>
+                    <SelectItem value="no-bots" disabled>
                       No saved bot tokens
                     </SelectItem>
                   ) : (
