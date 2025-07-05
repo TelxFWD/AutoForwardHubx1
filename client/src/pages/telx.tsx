@@ -288,6 +288,7 @@ export default function TelXPage() {
         <div className="flex gap-2 mt-3">
           {user.status === "paused" ? (
             <Button 
+              type="button"
               size="sm" 
               variant="outline"
               onClick={(e) => {
@@ -300,6 +301,7 @@ export default function TelXPage() {
             </Button>
           ) : (
             <Button 
+              type="button"
               size="sm" 
               variant="outline"
               onClick={(e) => {
@@ -312,6 +314,7 @@ export default function TelXPage() {
             </Button>
           )}
           <Button 
+            type="button"
             size="sm" 
             variant="destructive"
             onClick={(e) => {
@@ -363,6 +366,7 @@ export default function TelXPage() {
         </div>
         <div className="flex gap-2 mt-3">
           <Button 
+            type="button"
             size="sm" 
             variant="outline"
             onClick={() => {
@@ -374,6 +378,7 @@ export default function TelXPage() {
             Edit
           </Button>
           <Button 
+            type="button"
             size="sm" 
             variant="destructive"
             onClick={() => {
@@ -467,7 +472,7 @@ export default function TelXPage() {
                     onChange={(e) => setPhone(e.target.value)}
                   />
                 </div>
-                <Button onClick={requestOtp} disabled={loading || !phone}>
+                <Button type="button" onClick={requestOtp} disabled={loading || !phone}>
                   {loading ? <RefreshCw className="w-4 h-4 animate-spin mr-2" /> : null}
                   Send OTP
                 </Button>
@@ -484,10 +489,10 @@ export default function TelXPage() {
                   />
                 </div>
                 <div className="flex gap-2">
-                  <Button variant="outline" onClick={() => setStep("phone")}>
+                  <Button type="button" variant="outline" onClick={() => setStep("phone")}>
                     Back
                   </Button>
-                  <Button onClick={verifyOtp} disabled={loading || !otp}>
+                  <Button type="button" onClick={verifyOtp} disabled={loading || !otp}>
                     {loading ? <RefreshCw className="w-4 h-4 animate-spin mr-2" /> : null}
                     Verify & Create
                   </Button>
@@ -593,10 +598,10 @@ export default function TelXPage() {
               />
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setShowAddPair(false)}>
+              <Button type="button" variant="outline" onClick={() => setShowAddPair(false)}>
                 Cancel
               </Button>
-              <Button onClick={handleSubmit} disabled={loading || !source || !destination}>
+              <Button type="button" onClick={handleSubmit} disabled={loading || !source || !destination}>
                 {loading ? <RefreshCw className="w-4 h-4 animate-spin mr-2" /> : null}
                 Add Pair
               </Button>
@@ -694,10 +699,10 @@ export default function TelXPage() {
               />
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setShowEditPair(false)}>
+              <Button type="button" variant="outline" onClick={() => setShowEditPair(false)}>
                 Cancel
               </Button>
-              <Button onClick={handleSubmit} disabled={loading || !source || !destination}>
+              <Button type="button" onClick={handleSubmit} disabled={loading || !source || !destination}>
                 {loading ? <RefreshCw className="w-4 h-4 animate-spin mr-2" /> : null}
                 Update Pair
               </Button>
@@ -789,7 +794,7 @@ export default function TelXPage() {
                     onKeyPress={(e) => e.key === 'Enter' && handleAddText()}
                     className="flex-1"
                   />
-                  <Button onClick={handleAddText} disabled={loading || !newTextPattern.trim()}>
+                  <Button type="button" onClick={handleAddText} disabled={loading || !newTextPattern.trim()}>
                     {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
                     Add Pattern
                   </Button>
@@ -802,6 +807,7 @@ export default function TelXPage() {
                     {commonPatterns.map((pattern, idx) => (
                       <Button
                         key={idx}
+                        type="button"
                         size="sm"
                         variant="outline"
                         onClick={() => setNewTextPattern(pattern)}
@@ -834,6 +840,7 @@ export default function TelXPage() {
                           Added: Today
                         </Badge>
                         <Button 
+                          type="button"
                           size="sm" 
                           variant="destructive"
                           onClick={() => removeBlockedItemMutation.mutate(pattern)}
@@ -855,7 +862,7 @@ export default function TelXPage() {
                   accept="image/*"
                   onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
                 />
-                <Button onClick={handleAddImage} disabled={loading || !selectedFile}>
+                <Button type="button" onClick={handleAddImage} disabled={loading || !selectedFile}>
                   {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
                 </Button>
               </div>
@@ -871,6 +878,7 @@ export default function TelXPage() {
                           <span className="text-sm font-medium">{image.filename}</span>
                         </div>
                         <Button 
+                          type="button"
                           size="sm" 
                           variant="destructive"
                           onClick={() => removeBlockedItemMutation.mutate(image.hash)}
@@ -892,7 +900,7 @@ export default function TelXPage() {
           </Tabs>
           
           <div className="flex justify-end">
-            <Button variant="outline" onClick={() => setShowBlocklistManager(false)}>
+            <Button type="button" variant="outline" onClick={() => setShowBlocklistManager(false)}>
               Close
             </Button>
           </div>
@@ -931,6 +939,7 @@ export default function TelXPage() {
             </div>
             <div className="flex gap-3">
               <Button
+                type="button"
                 onClick={() => setShowBlocklistManager(true)}
                 variant="outline"
                 className="bg-orange-50 hover:bg-orange-100 border-orange-200 text-orange-700"
@@ -939,6 +948,7 @@ export default function TelXPage() {
                 Blocklist Manager
               </Button>
               <Button
+                type="button"
                 onClick={() => setShowAddUser(true)}
                 className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg"
               >
@@ -946,6 +956,7 @@ export default function TelXPage() {
                 Add User Session
               </Button>
               <Button
+                type="button"
                 onClick={() => queryClient.invalidateQueries({ queryKey: ['/api/copier/users'] })}
                 variant="outline"
                 className="bg-gray-50 hover:bg-gray-100"
@@ -971,6 +982,7 @@ export default function TelXPage() {
           <CardContent className="p-6">
             <div className="flex flex-wrap gap-4 items-center">
               <Button
+                type="button"
                 onClick={() => startCopierMutation.mutate()}
                 disabled={copierStatus === "running" || startCopierMutation.isPending}
                 className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white shadow-lg px-6 py-2"
@@ -983,6 +995,7 @@ export default function TelXPage() {
                 Start Global Copier
               </Button>
               <Button
+                type="button"
                 onClick={() => stopCopierMutation.mutate()}
                 disabled={copierStatus === "stopped" || stopCopierMutation.isPending}
                 className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white shadow-lg px-6 py-2"
@@ -1104,7 +1117,7 @@ export default function TelXPage() {
                     <p className="text-gray-500 dark:text-gray-400 mb-4">
                       Create your first forwarding pair for {selectedUser}
                     </p>
-                    <Button onClick={() => setShowAddPair(true)} className="bg-gradient-to-r from-blue-500 to-purple-600 text-white">
+                    <Button type="button" onClick={() => setShowAddPair(true)} className="bg-gradient-to-r from-blue-500 to-purple-600 text-white">
                       <Plus className="w-4 h-4 mr-2" />
                       Create First Pair
                     </Button>
@@ -1127,6 +1140,7 @@ export default function TelXPage() {
                   Go to the "User Sessions" tab and click on a user to manage their forwarding pairs
                 </p>
                 <Button 
+                  type="button"
                   onClick={() => {
                     // Switch to sessions tab (you can implement tab switching here)
                     const sessionsTab = document.querySelector('[value="sessions"]') as HTMLElement;
@@ -1146,7 +1160,7 @@ export default function TelXPage() {
         <TabsContent value="images" className="space-y-4">
           <div className="flex justify-between items-center">
             <h3 className="text-lg font-medium">Blocked Images</h3>
-            <Button onClick={() => setShowImageUpload(true)}>
+            <Button type="button" onClick={() => setShowImageUpload(true)}>
               <Upload className="w-4 h-4 mr-2" />
               Upload Image
             </Button>
@@ -1165,7 +1179,7 @@ export default function TelXPage() {
                     <div>Hash: {image.hash.substring(0, 16)}...</div>
                     <div>Blocked: {new Date(image.blocked_at).toLocaleDateString()}</div>
                   </div>
-                  <Button size="sm" variant="destructive" className="mt-2">
+                  <Button type="button" size="sm" variant="destructive" className="mt-2">
                     <Trash2 className="w-4 h-4" />
                   </Button>
                 </CardContent>
