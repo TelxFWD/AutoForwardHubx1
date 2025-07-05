@@ -353,11 +353,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // OTP Session endpoints
   app.post("/api/sessions/request-otp", async (req, res) => {
     try {
+      console.log("=== OTP REQUEST DEBUG ===");
+      console.log("Request body:", req.body);
+      console.log("Content-Type:", req.headers['content-type']);
+      
       const { sessionName, phoneNumber, sessionFileName } = req.body;
       
       if (!sessionName || !phoneNumber) {
+        console.log("Missing required fields:", { sessionName, phoneNumber, body: req.body });
         return res.status(400).json({ message: "sessionName and phoneNumber are required" });
-      }
+      }</old_str></old_str>
       
       // Use Python subprocess to handle OTP request
       const { spawn } = await import("child_process");

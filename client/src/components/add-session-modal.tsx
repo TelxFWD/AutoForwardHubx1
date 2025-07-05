@@ -33,8 +33,11 @@ export default function AddSessionModal({ isOpen, onClose }: AddSessionModalProp
     mutationFn: (data: { sessionName: string; phoneNumber: string; sessionFileName?: string }) => 
       apiRequest("/api/sessions/request-otp", {
         method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify(data),
-      }),
+      }),</old_str>
     onSuccess: (response: any) => {
       setSessionName(response.sessionName);
       setPhoneNumber(formData.phoneNumber);
@@ -93,7 +96,10 @@ export default function AddSessionModal({ isOpen, onClose }: AddSessionModalProp
     });
   };
 
-  const handleVerifyOtp = () => {
+  const handleVerifyOtp = (e?: React.FormEvent) => {
+    if (e) {
+      e.preventDefault();
+    }
     if (!otpCode.trim() || !phoneNumber) {
       toast({
         title: "Invalid Input",
@@ -103,7 +109,7 @@ export default function AddSessionModal({ isOpen, onClose }: AddSessionModalProp
       return;
     }
     verifyOtpMutation.mutate({ phoneNumber, otp: otpCode.trim() });
-  };
+  };</old_str>
 
   const handleResendOtp = () => {
     if (!phoneNumber) {
@@ -158,7 +164,7 @@ export default function AddSessionModal({ isOpen, onClose }: AddSessionModalProp
       phoneNumber: formData.phoneNumber,
       sessionFileName: formData.sessionFileName || formData.sessionName,
     });
-  };
+  };</old_str>
 
   const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -229,7 +235,7 @@ export default function AddSessionModal({ isOpen, onClose }: AddSessionModalProp
 
       case 'otp':
         return (
-          <div className="space-y-4">
+          <form onSubmit={handleVerifyOtp} className="space-y-4">
             <div className="text-center">
               <Shield className="w-12 h-12 text-blue-500 mx-auto mb-4" />
               <h3 className="text-lg font-semibold">OTP Verification Required</h3>
@@ -247,6 +253,12 @@ export default function AddSessionModal({ isOpen, onClose }: AddSessionModalProp
                 onChange={(e) => setOtpCode(e.target.value)}
                 className="mt-2 text-center text-lg tracking-widest"
                 maxLength={6}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleVerifyOtp();
+                  }
+                }}
               />
             </div>
             
@@ -266,7 +278,7 @@ export default function AddSessionModal({ isOpen, onClose }: AddSessionModalProp
                   Back
                 </Button>
                 <Button 
-                  onClick={handleVerifyOtp}
+                  type="submit"
                   disabled={verifyOtpMutation.isPending || !otpCode.trim()}
                   className="bg-primary text-white hover:bg-blue-700"
                 >
@@ -274,8 +286,8 @@ export default function AddSessionModal({ isOpen, onClose }: AddSessionModalProp
                 </Button>
               </div>
             </div>
-          </div>
-        );
+          </form>
+        );</old_str>
 
       case 'success':
         return (
