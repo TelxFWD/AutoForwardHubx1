@@ -128,6 +128,7 @@ export default function AddSessionModal({ isOpen, onClose }: AddSessionModalProp
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     
     // Basic validation
     if (!formData.sessionName || !formData.phoneNumber) {
@@ -153,6 +154,7 @@ export default function AddSessionModal({ isOpen, onClose }: AddSessionModalProp
     setSessionName(formData.sessionName);
     setPhoneNumber(formData.phoneNumber);
     
+    // Send request with exact format expected by backend
     requestOtpMutation.mutate({
       sessionName: formData.sessionName,
       phoneNumber: formData.phoneNumber,
@@ -176,6 +178,12 @@ export default function AddSessionModal({ isOpen, onClose }: AddSessionModalProp
                 placeholder="e.g., Main Account, Secondary Bot"
                 value={formData.sessionName}
                 onChange={(e) => handleInputChange("sessionName", e.target.value)}
+                onKeyDown={(e) => {
+                  // Prevent form submission on Enter key
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                  }
+                }}
                 className="mt-2"
               />
             </div>
@@ -190,6 +198,12 @@ export default function AddSessionModal({ isOpen, onClose }: AddSessionModalProp
                   placeholder="+1234567890"
                   value={formData.phoneNumber}
                   onChange={(e) => handleInputChange("phoneNumber", e.target.value)}
+                  onKeyDown={(e) => {
+                    // Prevent form submission on Enter key
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                    }
+                  }}
                   className="pl-10"
                 />
               </div>
@@ -205,6 +219,12 @@ export default function AddSessionModal({ isOpen, onClose }: AddSessionModalProp
                 placeholder="Auto-generated from session name"
                 value={formData.sessionFileName}
                 onChange={(e) => handleInputChange("sessionFileName", e.target.value)}
+                onKeyDown={(e) => {
+                  // Prevent form submission on Enter key
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                  }
+                }}
                 className="mt-2"
               />
               <p className="text-xs text-gray-500 mt-1">
