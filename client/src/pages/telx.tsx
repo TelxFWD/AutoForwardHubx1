@@ -109,6 +109,18 @@ export default function TelXPage() {
   const typedBlockedImages = blockedImages as BlockedImage[];
   const typedTrapLogs = trapLogs as TrapLog[];
 
+  // Auto-select the first active user if no user is selected and users are available
+  useEffect(() => {
+    if (!selectedUser && typedUsers.length > 0) {
+      const activeUser = typedUsers.find(user => user.status === "active");
+      if (activeUser) {
+        setSelectedUser(activeUser.user_id);
+      } else if (typedUsers.length > 0) {
+        setSelectedUser(typedUsers[0].user_id);
+      }
+    }
+  }, [typedUsers, selectedUser]);
+
   // Start/Stop Copier Mutations
   const startCopierMutation = useMutation({
     mutationFn: () => apiRequest('/api/start/copier', { method: 'POST' }),

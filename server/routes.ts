@@ -1841,7 +1841,7 @@ if __name__ == "__main__":
         
         // For now, call the persistent session manager via Python
         const { spawn } = await import('child_process');
-        const scriptPath = path.join(process.cwd(), 'telegram_copier', 'persistent_session_manager.py');
+        const scriptPath = `${process.cwd()}/telegram_copier/persistent_session_manager.py`;
         
         const childProcess = spawn('python3', [scriptPath, 'request_otp', phoneNumber, sessionName], {
           stdio: ['pipe', 'pipe', 'pipe'],
@@ -1925,7 +1925,7 @@ if __name__ == "__main__":
         const code = req.body.code || req.body.otp;
         
         const { spawn } = await import('child_process');
-        const scriptPath = path.join(process.cwd(), 'telegram_copier', 'persistent_session_manager.py');
+        const scriptPath = `${process.cwd()}/telegram_copier/persistent_session_manager.py`;
         
         const childProcess = spawn('python3', [scriptPath, 'verify_otp', phoneNumber, code], {
           stdio: ['pipe', 'pipe', 'pipe'],
@@ -2010,7 +2010,7 @@ if __name__ == "__main__":
       const { phoneNumber } = req.params;
       
       const { spawn } = await import('child_process');
-      const scriptPath = path.join(process.cwd(), 'telegram_copier', 'persistent_session_manager.py');
+      const scriptPath = `${process.cwd()}/telegram_copier/persistent_session_manager.py`;
       
       const childProcess = spawn('python3', [scriptPath, 'get_status', phoneNumber], {
         stdio: ['pipe', 'pipe', 'pipe'],
@@ -2076,7 +2076,7 @@ if __name__ == "__main__":
         }
         
         const { spawn } = await import('child_process');
-        const scriptPath = path.join(process.cwd(), 'telegram_copier', 'persistent_session_manager.py');
+        const scriptPath = `${process.cwd()}/telegram_copier/persistent_session_manager.py`;
         
         const childProcess = spawn('python3', [scriptPath, 'resend_otp', phoneNumber], {
           stdio: ['pipe', 'pipe', 'pipe'],
