@@ -34,7 +34,9 @@ const PinInput = React.forwardRef<HTMLInputElement, PinInputProps>(
 
       // Check if complete
       const pin = newValues.join("");
+      console.log("PIN input values:", newValues, "PIN:", pin, "Length:", pin.length);
       if (pin.length === length && onComplete) {
+        console.log("Calling onComplete with PIN:", pin);
         onComplete(pin);
       }
     };
