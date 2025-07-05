@@ -450,11 +450,27 @@ class AutoForwardXBot(commands.Bot):
         self.load_blocklist()
     
     def load_pairs_config(self) -> List[Dict]:
-        """Load pairs configuration"""
+        """Load pairs configuration from database via API"""
         try:
-            with open('telegram_reader/config/pairs.json', 'r') as f:
-                pairs = json.load(f)
-                return [pair for pair in pairs if pair.get('status') == 'active']
+            import requests
+            response = requests.get('http://0.0.0.0:5000/api/pairs')
+            if response.status_code == 200:
+                pairs = response.json()
+                # Convert to expected format
+                converted_pairs = []
+                for pair in pairs:
+                    if pair.get('status') == 'active' and pair.get('pairType') == 'discord':
+                        converted_pairs.append({
+                            'pair_name': pair['name'],
+                            'discord_webhook': pair['discordWebhook'],
+                            'destination_tg_channel': pair['destinationChannel'],
+                            'bot_token': pair['botToken'],
+                            'status': pair['status']
+                        })
+                return converted_pairs
+            else:
+                logger.error(f"Failed to load pairs from API: {response.status_code}")
+                return []
         except Exception as e:
             logger.error(f"Error loading pairs config: {e}")
             return []

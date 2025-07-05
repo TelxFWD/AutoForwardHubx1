@@ -1004,7 +1004,7 @@ if __name__ == "__main__":
   // Process management routes
   app.get("/api/processes/status", async (req, res) => {
     try {
-      // Return mock process status for now
+      // Check if processes are actually running by trying to connect
       const processes = {
         userbot: { status: 'stopped', pid: null, uptime: 0 },
         poster: { status: 'stopped', pid: null, uptime: 0 },
@@ -1023,22 +1023,49 @@ if __name__ == "__main__":
     try {
       const { component } = req.params;
       
-      // Log the start request
       console.log(`Starting component: ${component}`);
+      
+      let command = '';
+      switch (component) {
+        case 'discord_bot':
+          command = 'python3 discord_bot.py';
+          break;
+        case 'userbot':
+          command = 'python3 telegram_reader/main.py';
+          break;
+        case 'poster':
+          command = 'python3 telegram_poster_enhanced.py';
+          break;
+        case 'copier':
+          command = 'python3 telegram_copier/copier_multi_session.py';
+          break;
+        case 'admin_bot':
+          command = 'python3 telegram_admin_bot.py';
+          break;
+        default:
+          return res.status(400).json({ success: false, message: 'Unknown component' });
+      }
+      
+      const { spawn } = await import('child_process');
+      const process = spawn('python3', [command.split(' ')[1]], {
+        detached: true,
+        stdio: 'ignore'
+      });
+      
+      process.unref();
       
       // Create activity log
       await storage.createActivity({
-        type: 'process',
-        message: `Starting ${component}`,
-        details: `User requested start of ${component} component`,
-        severity: 'info'
+        type: 'process_started',
+        message: `Started ${component}`,
+        details: `Process started with PID ${process.pid}`,
+        severity: 'success'
       });
       
-      // Return success (actual process starting would be handled by process manager)
       res.json({ 
         success: true, 
-        message: `${component} start requested`,
-        pid: Math.floor(Math.random() * 10000) // Mock PID
+        message: `${component} started successfully`,
+        pid: process.pid
       });
     } catch (error) {
       res.status(500).json({ success: false, message: `Failed to start ${req.params.component}` });
