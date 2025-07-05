@@ -1680,25 +1680,7 @@ if __name__ == "__main__":
       res.status(500).json({ message: "Failed to block image" });
     }
   });
-  app.post("/api/discord/bots", async (req, res) => {
-    try {
-      const { name, token } = req.body;
-      
-      // In real implementation, validate token with Discord API
-      const bot = {
-        id: Date.now(),
-        name,
-        token,
-        status: 'active' as const,
-        lastPing: new Date().toISOString(),
-        guilds: Math.floor(Math.random() * 10) + 1
-      };
-      
-      res.status(201).json(bot);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to add Discord bot" });
-    }
-  });
+
 
   app.post("/api/discord/test-webhook", async (req, res) => {
     try {
@@ -2255,6 +2237,9 @@ if __name__ == "__main__":
   });
 
   app.post("/api/discord/bots", async (req, res) => {
+    console.log("=== DISCORD BOT CREATION START ===");
+    console.log("Raw request body:", req.body);
+    
     try {
       const botData = insertDiscordBotSchema.parse(req.body);
       console.log("=== DISCORD BOT CREATION DEBUG ===");
@@ -2275,6 +2260,7 @@ if __name__ == "__main__":
 
       res.status(201).json(bot);
     } catch (error) {
+      console.error("=== DISCORD BOT CREATION ERROR ===");
       console.error("Error creating Discord bot:", error);
       res.status(500).json({ message: "Failed to create Discord bot" });
     }
