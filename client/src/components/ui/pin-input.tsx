@@ -1,64 +1,33 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 
-interface PinInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "onChange"> {
-  length: number;
-  onComplete?: (value: string) => void;
-  onChange?: (value: string) => void;
+interface PinInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+  length?: number;
+  onComplete?: (pin: string) => void;
 }
 
 const PinInput = React.forwardRef<HTMLInputElement, PinInputProps>(
-  ({ className, length, onComplete, onChange, ...props }, ref) => {
+  ({ className, length = 4, onComplete, ...props }, ref) => {
     const [values, setValues] = React.useState<string[]>(new Array(length).fill(""));
     const inputRefs = React.useRef<HTMLInputElement[]>([]);
 
-    // Reset values when reset prop changes
-    React.useEffect(() => {
-      if (reset) {
-        setValues(new Array(length).fill(""));
-      }
-    }, [reset, length]);
-
     const handleChange = (index: number, value: string) => {
-      if (value.length > 1) {
-        // Handle paste
-        const pastedData = value.slice(0, length);
-        const newValues = pastedData.split('').slice(0, length);
-        while (newValues.length < length) {
-          newValues.push('');
-        }
-        setValues(newValues);
-
-        // Focus the next empty input or the last one
-        const nextIndex = Math.min(pastedData.length, length - 1);
-        setTimeout(() => {
-          inputRefs.current[nextIndex]?.focus();
-        }, 0);
-
-        const currentValue = newValues.join('');
-        onChange?.(currentValue);
-
-        if (newValues.filter(v => v).length === length) {
-          onComplete?.(currentValue);
-        }
-        return;
-      }
-
-      if (!/^\d*$/.test(value)) return; // Only allow digits
+      // Only allow digits
+      if (!/^\d*$/.test(value)) return;
 
       const newValues = [...values];
-      newValues[index] = value;
+      newValues[index] = value.slice(-1); // Only take the last digit
       setValues(newValues);
 
-      const currentValue = newValues.join('');
-      onChange?.(currentValue);
-
+      // Move to next input
       if (value && index < length - 1) {
         inputRefs.current[index + 1]?.focus();
       }
 
-      if (newValues.filter(v => v).length === length) {
-        onComplete?.(currentValue);
+      // Check if complete
+      const pin = newValues.join("");
+      if (pin.length === length && onComplete) {
+        onComplete(pin);
       }
     };
 
@@ -72,13 +41,13 @@ const PinInput = React.forwardRef<HTMLInputElement, PinInputProps>(
       e.preventDefault();
       const paste = e.clipboardData.getData("text");
       const digits = paste.replace(/\D/g, "").slice(0, length);
-
+      
       const newValues = new Array(length).fill("");
       for (let i = 0; i < digits.length; i++) {
         newValues[i] = digits[i];
       }
       setValues(newValues);
-
+      
       if (digits.length === length && onComplete) {
         onComplete(digits);
       }
