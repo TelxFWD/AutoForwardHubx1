@@ -1,0 +1,13 @@
+{
+  "global": {
+    "text_patterns": [
+      "/ *",
+      "1",
+      "leak",
+      "trap",
+      "edit this"
+    ],
+    "image_hashes": []
+  },
+  "pairs": {}
+}

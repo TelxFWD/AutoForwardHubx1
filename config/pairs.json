@@ -1,0 +1,12 @@
+[
+  {
+    "pair_name": "Demo Forwarding Pair",
+    "source_tg_channel": "@demo_source",
+    "discord_webhook": "https://discord.com/api/webhooks/1234567890/demo_webhook_token",
+    "destination_tg_channel": "@demo_destination",
+    "bot_token": "1234567890:ABCDEF-demo_bot_token_here",
+    "session": "demo_session",
+    "status": "active",
+    "enable_ai": false
+  }
+]
