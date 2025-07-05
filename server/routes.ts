@@ -344,7 +344,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/pairs/discord", async (req, res) => {
     try {
       console.log("Creating Discord pair with data:", req.body);
-      const validatedData = insertDiscordPairSchema.parse(req.body);
+      const pairData = req.body;
+      
+      // Handle bot token vs saved bot selection
+      if (pairData.telegramBotId && !pairData.botToken) {
+        // User selected a saved bot token, get the actual token
+        const telegramBot = await storage.getTelegramBot(parseInt(pairData.telegramBotId));
+        if (!telegramBot) {
+          return res.status(404).json({ message: "Selected Telegram bot not found" });
+        }
+        pairData.botToken = telegramBot.token;
+      }
+      
+      const validatedData = insertDiscordPairSchema.parse(pairData);
       console.log("Validated Discord pair data:", validatedData);
       
       const pair = await storage.createPair(validatedData);
@@ -2408,6 +2420,16 @@ if __name__ == "__main__":
         pairData.discordWebhook = webhookResult.webhookUrl;
       }
 
+      // Handle bot token vs saved bot selection
+      if (pairData.telegramBotId && !pairData.botToken) {
+        // User selected a saved bot token, get the actual token
+        const telegramBot = await storage.getTelegramBot(parseInt(pairData.telegramBotId));
+        if (!telegramBot) {
+          return res.status(404).json({ message: "Selected Telegram bot not found" });
+        }
+        pairData.botToken = telegramBot.token;
+      }
+      
       // Create the pair
       const validatedData = insertDiscordPairSchema.parse(pairData);
       const pair = await storage.createPair(validatedData);
