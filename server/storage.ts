@@ -1,6 +1,6 @@
 import { 
   users, pairs, sessions, blocklists, messageMappings, activities, systemStats, otpVerification,
-  type User, type InsertUser, type Pair, type InsertPair, 
+  type User, type InsertUser, type Pair, type InsertPair, type InsertTelegramPair, type InsertDiscordPair,
   type Session, type InsertSession, type Blocklist, type InsertBlocklist,
   type Activity, type InsertActivity, type SystemStats, type OtpVerification, type InsertOtpVerification
 } from "@shared/schema";
@@ -364,6 +364,7 @@ export class MemStorage implements IStorage {
 
   async createPair(pair: InsertPair): Promise<Pair> {
     const newPair: Pair = {
+      ...pair,
       id: this.nextPairId++,
       messageCount: 0,
       blockedCount: 0,
@@ -371,7 +372,12 @@ export class MemStorage implements IStorage {
       updatedAt: new Date(),
       status: pair.status || "active",
       enableAI: pair.enableAI || false,
-      ...pair,
+      pairType: pair.pairType || "telegram",
+      discordWebhook: pair.discordWebhook ?? null,
+      botToken: pair.botToken ?? null,
+      removeMentions: pair.removeMentions ?? null,
+      headerPatterns: pair.headerPatterns ?? null,
+      footerPatterns: pair.footerPatterns ?? null,
     };
     this.pairs.set(newPair.id, newPair);
     return newPair;

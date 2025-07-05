@@ -24,13 +24,18 @@ export const pairs = pgTable("pairs", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull(), // Associated user
   name: text("name").notNull(),
+  pairType: text("pair_type").notNull().default("telegram"), // telegram, discord
   sourceChannel: text("source_channel").notNull(),
-  discordWebhook: text("discord_webhook").notNull(),
+  discordWebhook: text("discord_webhook"), // Optional for telegram pairs
   destinationChannel: text("destination_channel").notNull(),
-  botToken: text("bot_token").notNull(),
+  botToken: text("bot_token"), // Optional for telegram pairs
   session: text("session").notNull(),
   status: text("status").notNull().default("active"), // active, paused, error
   enableAI: boolean("enable_ai").default(false),
+  // Telegram-specific fields
+  removeMentions: boolean("remove_mentions").default(true),
+  headerPatterns: text("header_patterns").array(), // Array of patterns
+  footerPatterns: text("footer_patterns").array(), // Array of patterns
   messageCount: integer("message_count").default(0),
   blockedCount: integer("blocked_count").default(0),
   createdAt: timestamp("created_at").defaultNow(),
@@ -118,6 +123,37 @@ export const insertPairSchema = createInsertSchema(pairs).omit({
   updatedAt: true,
 });
 
+// Separate schemas for different pair types
+export const insertTelegramPairSchema = createInsertSchema(pairs).omit({
+  id: true,
+  messageCount: true,
+  blockedCount: true,
+  createdAt: true,
+  updatedAt: true,
+  discordWebhook: true,
+  botToken: true,
+}).extend({
+  pairType: z.literal("telegram"),
+  removeMentions: z.boolean().default(true),
+  headerPatterns: z.array(z.string()).default([]),
+  footerPatterns: z.array(z.string()).default([]),
+});
+
+export const insertDiscordPairSchema = createInsertSchema(pairs).omit({
+  id: true,
+  messageCount: true,
+  blockedCount: true,
+  createdAt: true,
+  updatedAt: true,
+  removeMentions: true,
+  headerPatterns: true,
+  footerPatterns: true,
+}).extend({
+  pairType: z.literal("discord"),
+  discordWebhook: z.string().url("Discord webhook must be a valid URL"),
+  botToken: z.string().min(1, "Bot token is required for Discord pairs"),
+});
+
 export const insertSessionSchema = createInsertSchema(sessions).omit({
   id: true,
   lastActive: true,
@@ -169,6 +205,8 @@ export type InsertUserSession = z.infer<typeof insertUserSessionSchema>;
 
 export type Pair = typeof pairs.$inferSelect;
 export type InsertPair = z.infer<typeof insertPairSchema>;
+export type InsertTelegramPair = z.infer<typeof insertTelegramPairSchema>;
+export type InsertDiscordPair = z.infer<typeof insertDiscordPairSchema>;
 
 export type Session = typeof sessions.$inferSelect;
 export type InsertSession = z.infer<typeof insertSessionSchema>;

@@ -18,8 +18,9 @@ interface AddPairModalProps {
 }
 
 export default function AddPairModal({ isOpen, onClose }: AddPairModalProps) {
-  const [formData, setFormData] = useState<InsertPair>({
+  const [formData, setFormData] = useState({
     name: "",
+    userId: 1, // Default user ID
     sourceChannel: "",
     discordWebhook: "",
     destinationChannel: "",
@@ -37,7 +38,14 @@ export default function AddPairModal({ isOpen, onClose }: AddPairModalProps) {
   });
 
   const createPairMutation = useMutation({
-    mutationFn: (data: InsertPair) => apiRequest("POST", "/api/pairs", data),
+    mutationFn: (data: InsertPair) => {
+      // Use Discord-specific endpoint since this is the Discord pair form
+      const discordPairData = {
+        ...data,
+        pairType: "discord"
+      };
+      return apiRequest("/api/pairs/discord", { method: "POST", body: JSON.stringify(discordPairData) });
+    },
     onSuccess: () => {
       toast({
         title: "Success",
@@ -60,6 +68,7 @@ export default function AddPairModal({ isOpen, onClose }: AddPairModalProps) {
   const resetForm = () => {
     setFormData({
       name: "",
+      userId: 1,
       sourceChannel: "",
       discordWebhook: "",
       destinationChannel: "",

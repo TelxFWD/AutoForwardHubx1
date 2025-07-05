@@ -188,30 +188,30 @@ export default function TelXPage() {
   // Pair management mutations
   const addPairMutation = useMutation({
     mutationFn: async (pairData: any) => {
-      // Map the TelX format to database format
-      const dbPairData = {
+      // Create Telegram-specific pair data (clean format)
+      const telegramPairData = {
         name: `${pairData.source} → ${pairData.destination}`,
         userId: 1, // Current user ID
+        pairType: "telegram",
         sourceChannel: pairData.source,
         destinationChannel: pairData.destination,
-        discordWebhook: `https://discord.com/api/webhooks/placeholder`, // Placeholder webhook
-        sessionName: selectedUser || 'default',
+        session: selectedUser || 'default',
         status: 'active',
         removeMentions: pairData.strip_rules.remove_mentions,
         headerPatterns: pairData.strip_rules.header_patterns,
         footerPatterns: pairData.strip_rules.footer_patterns,
-        enableAi: false
+        enableAI: false
       };
 
-      const response = await fetch('/api/pairs', {
+      const response = await fetch('/api/pairs/telegram', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(dbPairData),
+        body: JSON.stringify(telegramPairData),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to create pair');
+        throw new Error(errorData.message || 'Failed to create Telegram pair');
       }
 
       return response.json();

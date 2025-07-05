@@ -3,8 +3,8 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { authStorage } from "./auth-storage";
 import { otpStorage } from "./otp-storage";
-import { insertPairSchema, insertSessionSchema, insertBlocklistSchema, insertActivitySchema, pinLoginSchema, createUserSchema, otpRequestSchema, otpVerifySchema } from "@shared/schema";
-import { registerEnhancedOtpRoutes } from "./enhanced-otp-routes";
+import { insertPairSchema, insertTelegramPairSchema, insertDiscordPairSchema, insertSessionSchema, insertBlocklistSchema, insertActivitySchema, pinLoginSchema, createUserSchema, otpRequestSchema, otpVerifySchema } from "@shared/schema";
+// Enhanced OTP routes will be registered separately if needed
 import { z } from "zod";
 import { body, validationResult } from "express-validator";
 import rateLimit from "express-rate-limit";
@@ -298,6 +298,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ message: "Failed to delete pair" });
+    }
+  });
+
+  // Telegram-specific pair routes
+  app.post("/api/pairs/telegram", async (req, res) => {
+    try {
+      console.log("Creating Telegram pair with data:", req.body);
+      const validatedData = insertTelegramPairSchema.parse(req.body);
+      console.log("Validated Telegram pair data:", validatedData);
+      
+      const pair = await storage.createPair(validatedData);
+      
+      // Log activity
+      await storage.createActivity({
+        type: "telegram_pair_created",
+        message: `New Telegram pair created: ${pair.name}`,
+        details: `Source: ${pair.sourceChannel} → Destination: ${pair.destinationChannel}`,
+        pairId: pair.id,
+        severity: "success",
+      });
+      
+      res.status(201).json(pair);
+    } catch (error) {
+      console.error("Error creating Telegram pair:", error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ 
+          message: "Invalid Telegram pair data", 
+          errors: error.errors,
+          received: req.body 
+        });
+      } else {
+        res.status(500).json({ 
+          message: "Failed to create Telegram pair",
+          error: error instanceof Error ? error.message : String(error)
+        });
+      }
+    }
+  });
+
+  // Discord-specific pair routes
+  app.post("/api/pairs/discord", async (req, res) => {
+    try {
+      console.log("Creating Discord pair with data:", req.body);
+      const validatedData = insertDiscordPairSchema.parse(req.body);
+      console.log("Validated Discord pair data:", validatedData);
+      
+      const pair = await storage.createPair(validatedData);
+      
+      // Log activity
+      await storage.createActivity({
+        type: "discord_pair_created",
+        message: `New Discord pair created: ${pair.name}`,
+        details: `Source: ${pair.sourceChannel} → Discord → ${pair.destinationChannel}`,
+        pairId: pair.id,
+        severity: "success",
+      });
+      
+      res.status(201).json(pair);
+    } catch (error) {
+      console.error("Error creating Discord pair:", error);
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ 
+          message: "Invalid Discord pair data", 
+          errors: error.errors,
+          received: req.body 
+        });
+      } else {
+        res.status(500).json({ 
+          message: "Failed to create Discord pair",
+          error: error instanceof Error ? error.message : String(error)
+        });
+      }
     }
   });
 
@@ -1652,7 +1724,7 @@ if __name__ == "__main__":
       // Transform sessions to match expected format
       const users = await Promise.all(sessions.map(async session => {
         // Filter pairs for this session
-        const sessionPairs = allPairs.filter(pair => pair.sessionName === session.name);
+        const sessionPairs = allPairs.filter(pair => pair.session === session.name);
         
         // Transform pairs to TelX format
         const transformedPairs = sessionPairs.map(pair => ({
