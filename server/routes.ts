@@ -632,7 +632,7 @@ if __name__ == "__main__":
       req.body.sessionFileName = sessionName;
       
       // Forward to request-otp
-      const requestOtpHandler = app._router.stack.find(layer => 
+      const requestOtpHandler = app._router.stack.find((layer: any) => 
         layer.route?.path === '/api/sessions/request-otp' && 
         layer.route.methods.post
       );
@@ -681,8 +681,19 @@ if __name__ == "__main__":
     try {
       const { userId } = req.params;
       
+      // Find session by name instead of ID
+      const session = await storage.getSessionByName(userId);
+      if (!session) {
+        const availableSessions = await storage.getAllSessions();
+        return res.status(404).json({ 
+          message: `Session '${userId}' not found`,
+          availableSessions: availableSessions.map(s => s.name),
+          totalSessions: availableSessions.length
+        });
+      }
+      
       // Update session status to paused
-      const session = await storage.updateSession(parseInt(userId), { status: "inactive" });
+      const updatedSession = await storage.updateSession(session.id, { status: "inactive" });
       
       await storage.createActivity({
         type: "session_paused",
@@ -692,10 +703,10 @@ if __name__ == "__main__":
         severity: "info",
       });
       
-      res.json({ message: "Session paused successfully", session });
+      res.json({ message: "Session paused successfully", session: updatedSession });
     } catch (error) {
       console.error("Pause session error:", error);
-      res.status(500).json({ message: "Failed to pause session" });
+      res.status(500).json({ message: "Failed to pause session", error: (error as Error).message });
     }
   });
 
@@ -703,8 +714,19 @@ if __name__ == "__main__":
     try {
       const { userId } = req.params;
       
+      // Find session by name instead of ID
+      const session = await storage.getSessionByName(userId);
+      if (!session) {
+        const availableSessions = await storage.getAllSessions();
+        return res.status(404).json({ 
+          message: `Session '${userId}' not found`,
+          availableSessions: availableSessions.map(s => s.name),
+          totalSessions: availableSessions.length
+        });
+      }
+      
       // Update session status to active
-      const session = await storage.updateSession(parseInt(userId), { status: "active" });
+      const updatedSession = await storage.updateSession(session.id, { status: "active" });
       
       await storage.createActivity({
         type: "session_resumed",
@@ -714,10 +736,10 @@ if __name__ == "__main__":
         severity: "info",
       });
       
-      res.json({ message: "Session resumed successfully", session });
+      res.json({ message: "Session resumed successfully", session: updatedSession });
     } catch (error) {
       console.error("Resume session error:", error);
-      res.status(500).json({ message: "Failed to resume session" });
+      res.status(500).json({ message: "Failed to resume session", error: (error as Error).message });
     }
   });
 
@@ -725,14 +747,19 @@ if __name__ == "__main__":
     try {
       const { userId } = req.params;
       
-      // Get session info before deletion
-      const session = await storage.getSession(parseInt(userId));
+      // Find session by name instead of ID
+      const session = await storage.getSessionByName(userId);
       if (!session) {
-        return res.status(404).json({ message: "Session not found" });
+        const availableSessions = await storage.getAllSessions();
+        return res.status(404).json({ 
+          message: `Session '${userId}' not found`,
+          availableSessions: availableSessions.map(s => s.name),
+          totalSessions: availableSessions.length
+        });
       }
       
       // Delete session
-      await storage.deleteSession(parseInt(userId));
+      await storage.deleteSession(session.id);
       
       await storage.createActivity({
         type: "session_deleted",
@@ -744,7 +771,7 @@ if __name__ == "__main__":
       res.json({ message: "Session deleted successfully" });
     } catch (error) {
       console.error("Delete session error:", error);
-      res.status(500).json({ message: "Failed to delete session" });
+      res.status(500).json({ message: "Failed to delete session", error: (error as Error).message });
     }
   });
 
@@ -1677,30 +1704,23 @@ if __name__ == "__main__":
   // TelX-specific API endpoints
   app.get("/api/copier/users", async (req, res) => {
     try {
-      // Mock data for now - in production, this would read from user_copies.json
-      const mockUsers = [
-        {
-          user_id: "example_user",
-          session_file: "example_user.session",
-          status: "active",
-          total_pairs: 2,
-          trap_hits: 3,
-          pairs: [
-            {
-              source: "@source_channel",
-              destination: "@dest_channel",
-              strip_rules: {
-                remove_mentions: true,
-                header_patterns: ["^#\\w+", "^(⭐|🔥|VIP|ENTRY)\\b"],
-                footer_patterns: ["shared by .*", "auto copy.*"]
-              }
-            }
-          ]
-        }
-      ];
-      res.json(mockUsers);
+      // Get actual sessions from database
+      const sessions = await storage.getAllSessions();
+      
+      // Transform sessions to match expected format
+      const users = sessions.map(session => ({
+        user_id: session.name,
+        session_file: session.sessionFile,
+        status: session.status,
+        total_pairs: 0, // Would need to calculate from pairs table
+        trap_hits: 0, // Would need to calculate from activities table
+        pairs: [] // Would need to get from pairs table
+      }));
+      
+      res.json(users);
     } catch (error) {
-      res.status(500).json({ error: "Failed to fetch users" });
+      console.error("Failed to fetch copier users:", error);
+      res.status(500).json({ error: "Failed to fetch copier users" });
     }
   });
 
