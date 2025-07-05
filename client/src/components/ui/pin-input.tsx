@@ -1,98 +1,119 @@
-import * as React from "react";
-import { cn } from "@/lib/utils";
+
+import React, { useState, useRef, useEffect } from 'react';
+import { cn } from '@/lib/utils';
 
 interface PinInputProps {
   length?: number;
-  onComplete?: (pin: string) => void;
+  value?: string;
+  onChange?: (value: string) => void;
+  onComplete?: (value: string) => void;
   className?: string;
+  placeholder?: string;
+  disabled?: boolean;
 }
 
-const PinInput = React.forwardRef<HTMLInputElement, PinInputProps>(
-  ({ className, length = 4, onComplete }, ref) => {
-    const [values, setValues] = React.useState<string[]>(Array(length).fill(""));
-    const inputRefs = React.useRef<(HTMLInputElement | null)[]>([]);
+export const PinInput = React.forwardRef<HTMLDivElement, PinInputProps>(
+  ({ length = 4, value = '', onChange, onComplete, className, placeholder = '○', disabled }, ref) => {
+    const [pins, setPins] = useState<string[]>(Array(length).fill(''));
+    const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-    const handleChange = (index: number, value: string) => {
-      console.log("PIN handleChange:", { index, value, regex: /^\d$/.test(value) });
+    useEffect(() => {
+      if (value) {
+        const valueArray = value.split('').slice(0, length);
+        const newPins = Array(length).fill('').map((_, i) => valueArray[i] || '');
+        setPins(newPins);
+      }
+    }, [value, length]);
+
+    const handleChange = (index: number, inputValue: string) => {
+      if (disabled) return;
       
-      // Only allow single digits
-      if (value && !/^\d$/.test(value)) {
-        console.log("PIN: rejecting non-digit value:", value);
-        return;
-      }
+      // Only allow numbers
+      if (inputValue && !/^\d$/.test(inputValue)) return;
 
-      const newValues = [...values];
-      newValues[index] = value;
-      setValues(newValues);
-      console.log("PIN: values updated:", newValues);
+      const newPins = [...pins];
+      newPins[index] = inputValue;
+      setPins(newPins);
 
-      // Move to next input if value entered
-      if (value && index < length - 1) {
+      const newValue = newPins.join('');
+      onChange?.(newValue);
+
+      // Auto-focus next input
+      if (inputValue && index < length - 1) {
         inputRefs.current[index + 1]?.focus();
-        console.log("PIN: moving to next input", index + 1);
       }
 
-      // Call onComplete when all inputs are filled
-      const pin = newValues.join("");
-      console.log("PIN: checking completion:", { pin, length: pin.length, required: length });
-      if (pin.length === length && onComplete) {
-        console.log("PIN: calling onComplete with:", pin);
-        onComplete(pin);
+      // Call onComplete when all pins are filled
+      if (newValue.length === length) {
+        onComplete?.(newValue);
       }
     };
 
     const handleKeyDown = (index: number, e: React.KeyboardEvent) => {
-      // Move to previous input on backspace if current is empty
-      if (e.key === "Backspace" && !values[index] && index > 0) {
+      if (disabled) return;
+
+      if (e.key === 'Backspace' && !pins[index] && index > 0) {
         inputRefs.current[index - 1]?.focus();
       }
     };
 
     const handlePaste = (e: React.ClipboardEvent) => {
+      if (disabled) return;
+      
       e.preventDefault();
-      const paste = e.clipboardData.getData("text");
-      const digits = paste.replace(/\D/g, "").slice(0, length);
+      const pasteData = e.clipboardData.getData('text');
+      const numbers = pasteData.replace(/\D/g, '').slice(0, length);
       
-      const newValues = Array(length).fill("");
-      for (let i = 0; i < digits.length; i++) {
-        newValues[i] = digits[i];
-      }
-      setValues(newValues);
-      
-      // Focus appropriate input
-      const nextIndex = Math.min(digits.length, length - 1);
-      inputRefs.current[nextIndex]?.focus();
-      
-      // Call onComplete if all filled
-      if (digits.length === length && onComplete) {
-        onComplete(digits);
+      if (numbers) {
+        const newPins = Array(length).fill('').map((_, i) => numbers[i] || '');
+        setPins(newPins);
+        
+        const newValue = newPins.join('');
+        onChange?.(newValue);
+        
+        if (newValue.length === length) {
+          onComplete?.(newValue);
+        }
       }
     };
 
+    const reset = () => {
+      setPins(Array(length).fill(''));
+      onChange?.('');
+      inputRefs.current[0]?.focus();
+    };
+
+    // Expose reset function via ref
+    React.useImperativeHandle(ref, () => ({
+      reset,
+    }));
+
     return (
-      <div className="flex gap-2">
-        {values.map((value, index) => (
+      <div
+        ref={ref}
+        className={cn('flex gap-2', className)}
+        onPaste={handlePaste}
+      >
+        {pins.map((pin, index) => (
           <input
             key={index}
             ref={(el) => {
               inputRefs.current[index] = el;
-              if (index === 0 && ref) {
-                if (typeof ref === "function") ref(el);
-                else ref.current = el;
-              }
             }}
             type="text"
             inputMode="numeric"
-            pattern="\d"
             maxLength={1}
-            value={value}
+            value={pin}
             onChange={(e) => handleChange(index, e.target.value)}
             onKeyDown={(e) => handleKeyDown(index, e)}
-            onPaste={handlePaste}
+            disabled={disabled}
             className={cn(
-              "h-12 w-12 rounded-md border border-input bg-background text-center text-lg font-mono focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
-              className
+              'w-12 h-12 text-center text-lg font-semibold border rounded-md',
+              'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent',
+              'disabled:opacity-50 disabled:cursor-not-allowed',
+              pin ? 'border-blue-500' : 'border-gray-300'
             )}
+            placeholder={placeholder}
           />
         ))}
       </div>
@@ -100,6 +121,4 @@ const PinInput = React.forwardRef<HTMLInputElement, PinInputProps>(
   }
 );
 
-PinInput.displayName = "PinInput";
-
-export { PinInput };
+PinInput.displayName = 'PinInput';

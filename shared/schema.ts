@@ -125,12 +125,12 @@ export const insertActivitySchema = createInsertSchema(activities).omit({
 
 // Additional schemas for PIN validation
 export const pinLoginSchema = z.object({
-  pin: z.string().regex(/^\d{4}$/, "PIN must be exactly 4 digits"),
+  pin: z.string().min(4, "PIN must be at least 4 characters").max(4, "PIN must be at most 4 characters").regex(/^\d{4}$/, "PIN must be exactly 4 digits"),
 });
 
 export const createUserSchema = z.object({
-  pin: z.string().regex(/^\d{4}$/, "PIN must be exactly 4 digits"),
-  displayName: z.string().optional(),
+  pin: z.string().min(4, "PIN must be at least 4 characters").max(4, "PIN must be at most 4 characters").regex(/^\d{4}$/, "PIN must be exactly 4 digits"),
+  displayName: z.string().min(1, "Display name is required").optional(),
 });
 
 // Types

@@ -77,7 +77,7 @@ export function AdminPage() {
     enabled: isAuthenticated,
   });
 
-  
+
 
   const deleteUserMutation = useMutation({
     mutationFn: async (userId: number) => {
@@ -124,7 +124,7 @@ export function AdminPage() {
     console.log("=== FORM SUBMISSION DEBUG ===");
     console.log("newUserPin:", newUserPin, "length:", newUserPin?.length);
     console.log("newUserName:", newUserName, "length:", newUserName?.length);
-    
+
     if (!newUserPin || newUserPin.length !== 4) {
       console.log("PIN validation failed");
       toast({

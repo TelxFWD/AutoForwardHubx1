@@ -107,6 +107,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/admin/users", requireAdmin, async (req, res) => {
     try {
       console.log("Received user data:", JSON.stringify(req.body, null, 2));
+      
+      // Check if request body is empty
+      if (!req.body || Object.keys(req.body).length === 0) {
+        return res.status(400).json({ 
+          message: "Request body is required",
+          errors: [{ code: "invalid_type", message: "PIN and display name are required", path: ["pin"] }]
+        });
+      }
+
+      // Validate required fields before schema parsing
+      if (!req.body.pin) {
+        return res.status(400).json({ 
+          message: "PIN is required",
+          errors: [{ code: "invalid_type", message: "PIN must be exactly 4 digits", path: ["pin"] }]
+        });
+      }
+
       const userData = createUserSchema.parse(req.body);
       const user = await authStorage.createUser(userData);
       
@@ -120,7 +137,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log("User creation error:", error);
       if (error instanceof z.ZodError) {
         console.log("Validation errors:", error.errors);
-        res.status(400).json({ message: "Invalid user data", errors: error.errors });
+        res.status(400).json({ 
+          message: "Invalid user data. PIN must be exactly 4 digits.", 
+          errors: error.errors 
+        });
       } else {
         const message = error instanceof Error ? error.message : "Failed to create user";
         res.status(500).json({ message });

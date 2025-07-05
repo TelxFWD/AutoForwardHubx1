@@ -17,7 +17,8 @@ const missingVars = requiredEnvVars.filter(key => !process.env[key]);
 
 if (missingVars.length > 0) {
   console.log(`⚠️  Missing environment variables: ${missingVars.join(', ')}`);
-  console.log('Please update your .env file with the required credentials.');
+  console.log('📝 These are required for Telegram integration but the app will continue to run.');
+  console.log('💡 Add them to your .env file when ready to use Telegram features.');
 }
 
 const app = express();
@@ -80,12 +81,15 @@ app.use((req, res, next) => {
     const duration = Date.now() - start;
     if (path.startsWith("/api")) {
       let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      if (capturedJsonResponse) {
-        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
+      
+      // Only log response body for errors in production
+      if (capturedJsonResponse && (res.statusCode >= 400 || process.env.NODE_ENV === 'development')) {
+        const responseStr = JSON.stringify(capturedJsonResponse);
+        logLine += ` :: ${responseStr.length > 100 ? responseStr.slice(0, 100) + "..." : responseStr}`;
       }
 
-      if (logLine.length > 80) {
-        logLine = logLine.slice(0, 79) + "…";
+      if (logLine.length > 120) {
+        logLine = logLine.slice(0, 119) + "…";
       }
 
       log(logLine);
