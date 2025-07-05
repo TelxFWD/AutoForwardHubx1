@@ -13,21 +13,30 @@ const PinInput = React.forwardRef<HTMLInputElement, PinInputProps>(
     const inputRefs = React.useRef<(HTMLInputElement | null)[]>([]);
 
     const handleChange = (index: number, value: string) => {
+      console.log("PIN handleChange:", { index, value, regex: /^\d$/.test(value) });
+      
       // Only allow single digits
-      if (value && !/^\d$/.test(value)) return;
+      if (value && !/^\d$/.test(value)) {
+        console.log("PIN: rejecting non-digit value:", value);
+        return;
+      }
 
       const newValues = [...values];
       newValues[index] = value;
       setValues(newValues);
+      console.log("PIN: values updated:", newValues);
 
       // Move to next input if value entered
       if (value && index < length - 1) {
         inputRefs.current[index + 1]?.focus();
+        console.log("PIN: moving to next input", index + 1);
       }
 
       // Call onComplete when all inputs are filled
       const pin = newValues.join("");
+      console.log("PIN: checking completion:", { pin, length: pin.length, required: length });
       if (pin.length === length && onComplete) {
+        console.log("PIN: calling onComplete with:", pin);
         onComplete(pin);
       }
     };

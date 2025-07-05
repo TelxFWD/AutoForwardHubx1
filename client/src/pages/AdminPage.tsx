@@ -121,7 +121,12 @@ export function AdminPage() {
   };
 
   const handleCreateUser = () => {
+    console.log("=== FORM SUBMISSION DEBUG ===");
+    console.log("newUserPin:", newUserPin, "length:", newUserPin?.length);
+    console.log("newUserName:", newUserName, "length:", newUserName?.length);
+    
     if (!newUserPin || newUserPin.length !== 4) {
+      console.log("PIN validation failed");
       toast({
         title: "Error",
         description: "Please enter a 4-digit PIN",
@@ -131,6 +136,7 @@ export function AdminPage() {
     }
 
     if (!newUserName.trim()) {
+      console.log("Name validation failed");
       toast({
         title: "Error", 
         description: "Please enter a display name",
@@ -139,10 +145,12 @@ export function AdminPage() {
       return;
     }
 
-    createUserMutation.mutate({
+    const userData = {
       pin: newUserPin,
       displayName: newUserName.trim(),
-    });
+    };
+    console.log("Calling mutation with:", userData);
+    createUserMutation.mutate(userData);
   };
 
   const handleDeleteUser = (userId: number) => {
@@ -294,8 +302,10 @@ export function AdminPage() {
                         <PinInput
                           length={4}
                           onComplete={(pin) => {
-                            console.log("PIN completed:", pin);
+                            console.log("=== PIN COMPLETED ===");
+                            console.log("PIN received:", pin);
                             setNewUserPin(pin);
+                            console.log("State updated with PIN:", pin);
                           }}
                         />
                       </div>
