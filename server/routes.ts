@@ -1824,8 +1824,323 @@ if __name__ == "__main__":
     }
   });
 
-  // Register enhanced OTP routes (replaces legacy OTP endpoints)
-  registerEnhancedOtpRoutes(app);
+  // Enhanced OTP routes with persistent session management
+  app.post("/api/sessions/request-otp", 
+    rateLimit({
+      windowMs: 1 * 60 * 1000, // 1 minute
+      max: 3, // 3 requests per minute per IP
+      message: { message: "Too many OTP requests. Please wait before trying again." }
+    }),
+    async (req, res) => {
+      try {
+        const phoneNumber = req.body.phoneNumber || req.body.phone;
+        const sessionName = req.body.sessionName || `user_${phoneNumber?.replace(/[+\-\s]/g, '')}`;
+        
+        // Clean up expired OTP verifications
+        await storage.cleanExpiredOtpVerifications();
+        
+        // For now, call the persistent session manager via Python
+        const { spawn } = await import('child_process');
+        const scriptPath = path.join(process.cwd(), 'telegram_copier', 'persistent_session_manager.py');
+        
+        const childProcess = spawn('python3', [scriptPath, 'request_otp', phoneNumber, sessionName], {
+          stdio: ['pipe', 'pipe', 'pipe'],
+          env: { ...process.env },
+          timeout: 30000
+        });
+
+        let stdout = '';
+        let stderr = '';
+
+        childProcess.stdout.on('data', (data) => {
+          stdout += data.toString();
+        });
+
+        childProcess.stderr.on('data', (data) => {
+          stderr += data.toString();
+        });
+
+        childProcess.on('close', async (code) => {
+          if (code === 0) {
+            try {
+              const result = JSON.parse(stdout.trim());
+              
+              if (result.success) {
+                // Store in database for tracking
+                await storage.createOtpVerification({
+                  phoneNumber,
+                  sessionName,
+                  phoneCodeHash: result.phone_code_hash,
+                  expiresAt: new Date(Date.now() + 300000), // 5 minutes
+                  status: "pending"
+                });
+                
+                res.json({
+                  success: true,
+                  message: result.message,
+                  expiresIn: result.expires_in || 300000,
+                  sessionName
+                });
+              } else {
+                res.status(400).json({
+                  success: false,
+                  message: result.message
+                });
+              }
+            } catch (e) {
+              res.status(500).json({
+                success: false,
+                message: "Failed to parse OTP response"
+              });
+            }
+          } else {
+            console.error(`Python process failed: ${stderr}`);
+            res.status(500).json({
+              success: false,
+              message: stderr.includes("environment variables") ? 
+                "Missing Telegram API credentials. Please configure TELEGRAM_API_ID and TELEGRAM_API_HASH." :
+                "OTP request failed"
+            });
+          }
+        });
+        
+      } catch (error) {
+        console.error("OTP request error:", error);
+        res.status(500).json({
+          success: false,
+          message: "OTP request failed due to system error"
+        });
+      }
+    });
+
+  app.post("/api/sessions/verify-otp", 
+    rateLimit({
+      windowMs: 1 * 60 * 1000, // 1 minute
+      max: 5, // 5 verification attempts per minute per IP
+      message: { message: "Too many verification attempts. Please wait before trying again." }
+    }),
+    async (req, res) => {
+      try {
+        const phoneNumber = req.body.phoneNumber || req.body.phone;
+        const code = req.body.code || req.body.otp;
+        
+        const { spawn } = await import('child_process');
+        const scriptPath = path.join(process.cwd(), 'telegram_copier', 'persistent_session_manager.py');
+        
+        const childProcess = spawn('python3', [scriptPath, 'verify_otp', phoneNumber, code], {
+          stdio: ['pipe', 'pipe', 'pipe'],
+          env: { ...process.env },
+          timeout: 30000
+        });
+
+        let stdout = '';
+        let stderr = '';
+
+        childProcess.stdout.on('data', (data) => {
+          stdout += data.toString();
+        });
+
+        childProcess.stderr.on('data', (data) => {
+          stderr += data.toString();
+        });
+
+        childProcess.on('close', async (code) => {
+          if (code === 0) {
+            try {
+              const result = JSON.parse(stdout.trim());
+              
+              if (result.success) {
+                // Update database status
+                await storage.updateOtpVerification(phoneNumber, { status: "verified" });
+                
+                // Create session in database
+                if (result.session) {
+                  await storage.createSession({
+                    userId: 1, // Default user ID
+                    name: result.session.sessionName,
+                    phone: result.session.phoneNumber,
+                    sessionFile: result.session.sessionFile,
+                    status: "active"
+                  });
+                }
+                
+                res.json({
+                  success: true,
+                  message: result.message,
+                  session: result.session
+                });
+              } else {
+                // Update status if expired
+                if (result.message.includes("expired")) {
+                  await storage.updateOtpVerification(phoneNumber, { status: "expired" });
+                }
+                
+                res.status(400).json({
+                  success: false,
+                  message: result.message
+                });
+              }
+            } catch (e) {
+              res.status(500).json({
+                success: false,
+                message: "Failed to parse OTP verification response"
+              });
+            }
+          } else {
+            console.error(`Python verification process failed: ${stderr}`);
+            res.status(500).json({
+              success: false,
+              message: "OTP verification failed"
+            });
+          }
+        });
+        
+      } catch (error) {
+        console.error("OTP verification error:", error);
+        res.status(500).json({
+          success: false,
+          message: "OTP verification failed due to system error"
+        });
+      }
+    });
+
+  // Get OTP session status
+  app.get("/api/sessions/otp-status/:phoneNumber", async (req, res) => {
+    try {
+      const { phoneNumber } = req.params;
+      
+      const { spawn } = await import('child_process');
+      const scriptPath = path.join(process.cwd(), 'telegram_copier', 'persistent_session_manager.py');
+      
+      const childProcess = spawn('python3', [scriptPath, 'get_status', phoneNumber], {
+        stdio: ['pipe', 'pipe', 'pipe'],
+        env: { ...process.env },
+        timeout: 10000
+      });
+
+      let stdout = '';
+      let stderr = '';
+
+      childProcess.stdout.on('data', (data) => {
+        stdout += data.toString();
+      });
+
+      childProcess.stderr.on('data', (data) => {
+        stderr += data.toString();
+      });
+
+      childProcess.on('close', (code) => {
+        if (code === 0) {
+          try {
+            const result = JSON.parse(stdout.trim());
+            res.json(result);
+          } catch (e) {
+            res.json({
+              hasSession: false,
+              message: "Failed to parse status response"
+            });
+          }
+        } else {
+          res.json({
+            hasSession: false,
+            message: "Failed to get session status"
+          });
+        }
+      });
+      
+    } catch (error) {
+      console.error("OTP status error:", error);
+      res.status(500).json({
+        hasSession: false,
+        message: "Failed to get session status"
+      });
+    }
+  });
+
+  // Resend OTP
+  app.post("/api/sessions/resend-otp", 
+    rateLimit({
+      windowMs: 1 * 60 * 1000, // 1 minute
+      max: 2, // 2 resend attempts per minute per IP
+      message: { message: "Too many resend attempts. Please wait before trying again." }
+    }),
+    async (req, res) => {
+      try {
+        const { phoneNumber } = req.body;
+        
+        if (!phoneNumber) {
+          return res.status(400).json({
+            success: false,
+            message: "Phone number is required"
+          });
+        }
+        
+        const { spawn } = await import('child_process');
+        const scriptPath = path.join(process.cwd(), 'telegram_copier', 'persistent_session_manager.py');
+        
+        const childProcess = spawn('python3', [scriptPath, 'resend_otp', phoneNumber], {
+          stdio: ['pipe', 'pipe', 'pipe'],
+          env: { ...process.env },
+          timeout: 30000
+        });
+
+        let stdout = '';
+        let stderr = '';
+
+        childProcess.stdout.on('data', (data) => {
+          stdout += data.toString();
+        });
+
+        childProcess.stderr.on('data', (data) => {
+          stderr += data.toString();
+        });
+
+        childProcess.on('close', async (code) => {
+          if (code === 0) {
+            try {
+              const result = JSON.parse(stdout.trim());
+              
+              if (result.success) {
+                // Update database expiration
+                await storage.updateOtpVerification(phoneNumber, { 
+                  expiresAt: new Date(Date.now() + 300000),
+                  status: "pending"
+                });
+                
+                res.json({
+                  success: true,
+                  message: result.message,
+                  expiresIn: result.expires_in || 300000
+                });
+              } else {
+                res.status(400).json({
+                  success: false,
+                  message: result.message
+                });
+              }
+            } catch (e) {
+              res.status(500).json({
+                success: false,
+                message: "Failed to parse resend response"
+              });
+            }
+          } else {
+            console.error(`Python resend process failed: ${stderr}`);
+            res.status(500).json({
+              success: false,
+              message: "OTP resend failed"
+            });
+          }
+        });
+        
+      } catch (error) {
+        console.error("OTP resend error:", error);
+        res.status(500).json({
+          success: false,
+          message: "OTP resend failed due to system error"
+        });
+      }
+    });
 
   const httpServer = createServer(app);
   return httpServer;
