@@ -1,0 +1,127 @@
+Perform a comprehensive system-wide functionality test and bug fix for the entire Telegram Copier architecture based on the following key modules and features:
+
+✅ Core Functional Tests
+Frontend Dashboard
+Test all UI pages: Dashboard, Sessions, Pairs, TelX, Blocklists, Activity Logs, Trap Logs.
+
+Verify:
+
+Session creation via OTP (Test both Dashboard and TelX pages).
+
+Pair creation and editing (Test both Telegram↔Telegram and Telegram↔Discord↔Telegram flows).
+
+Start, pause, and delete sessions from both UI and API.
+
+Real-time system statistics and activity logs update correctly.
+
+Mobile responsiveness and UI consistency.
+
+Backend API
+Test all REST API endpoints:
+
+/api/sessions (Create, list, verify OTP)
+
+/api/pairs (Add, edit, pause, delete, support for multiple pair types)
+
+/api/copier (Start, stop, pause sessions, session listing)
+
+/api/blocklists (Add, delete, list)
+
+/api/stats (Live system health)
+
+/api/activities (Event logging)
+
+Validate API request and response structures, including input validation, correct typing (Zod schema matching), and appropriate HTTP status codes.
+
+Confirm API correctly distinguishes between Telegram-Only and Telegram-Discord-Telegram pairs.
+
+Message Forwarding Pipeline
+Test multi-session Telegram reading and message capture using Telethon.
+
+Test Discord webhook forwarding and verify correct message formatting.
+
+Test Telegram bot posting using Pyrogram (forwarding to destination Telegram channels).
+
+Validate bi-directional edit/delete sync between Telegram and Discord.
+
+Advanced Security & Stealth Features
+Test trap detection:
+
+Text pattern traps.
+
+Image hash traps.
+
+Edit frequency monitoring with auto-pause.
+
+Test stealth engine:
+
+Image re-encoding and EXIF stripping.
+
+Fingerprint normalization.
+
+Invisible watermarking and AI caption rewriting.
+
+Confirm proper operation of the auto-pause system on trap detection.
+
+Admin Systems
+Test Telegram Admin Bot:
+
+Inline keyboard controls.
+
+Pair management.
+
+Live status and notifications.
+
+Blocklist editing via bot.
+
+Validate multi-user session isolation:
+
+Separate sessions per user.
+
+Unique OTP verification flows per user.
+
+Per-user trap detection and forwarding rules.
+
+Monitoring & Analytics
+Confirm logs are generated per component.
+
+Test real-time statistics: processed, blocked, forwarded message counts.
+
+Validate system health and performance metrics.
+
+Ensure error handling with graceful recovery and retry mechanisms.
+
+Deployment & Configuration
+Validate .env variable requirements.
+
+Confirm PostgreSQL and in-memory fallback work seamlessly.
+
+Check hot reloading of configuration files.
+
+Verify environment switching (dev, staging, production).
+
+Quality Assurance
+Confirm:
+
+TypeScript type safety.
+
+ESLint compliance.
+
+Consistent code formatting.
+
+Adequate test coverage.
+
+🔍 Additional Notes:
+Test session reuse across Dashboard and TelX pages.
+
+Ensure OTP session continuity: persistent Telethon client during OTP request and verification.
+
+Validate that pair creation correctly distinguishes between Telegram-only and Discord-involved pairs.
+
+Ensure system does not submit unnecessary Discord fields for Telegram-to-Telegram pairs.
+
+Confirm that auto-refresh and useEffect dependencies do not cause unwanted page reloads.
+
+🎯 Final Objective:
+Test and fix all bugs, validate the system end-to-end, ensure multi-user, multi-session, and multi-platform flows work flawlessly, and confirm the system is production-ready with full feature stability.
+

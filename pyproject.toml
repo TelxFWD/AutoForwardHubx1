@@ -17,5 +17,6 @@ dependencies = [
     "requests>=2.32.4",
     "telegram>=0.0.1",
     "telethon>=1.40.0",
+    "tgcrypto>=1.2.5",
     "uvicorn>=0.35.0",
 ]

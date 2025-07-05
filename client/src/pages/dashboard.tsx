@@ -33,7 +33,7 @@ export default function Dashboard({ activeTab = "dashboard" }: DashboardProps) {
   });
 
   const pauseAllMutation = useMutation({
-    mutationFn: () => apiRequest("POST", "/api/control/pause-all"),
+    mutationFn: () => apiRequest("/api/control/pause-all", { method: "POST" }),
     onSuccess: () => {
       toast({
         title: "Success",
@@ -52,7 +52,7 @@ export default function Dashboard({ activeTab = "dashboard" }: DashboardProps) {
   });
 
   const resumeAllMutation = useMutation({
-    mutationFn: () => apiRequest("POST", "/api/control/resume-all"),
+    mutationFn: () => apiRequest("/api/control/resume-all", { method: "POST" }),
     onSuccess: () => {
       toast({
         title: "Success",

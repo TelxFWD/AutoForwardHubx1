@@ -40,7 +40,7 @@ export default function DiscordWebhookManager() {
 
   const addBotMutation = useMutation({
     mutationFn: (data: { name: string; token: string }) =>
-      apiRequest("POST", "/api/discord/bots", data),
+      apiRequest("/api/discord/bots", { method: "POST", body: JSON.stringify(data) }),
     onSuccess: () => {
       toast({
         title: "Bot Added",
@@ -60,7 +60,7 @@ export default function DiscordWebhookManager() {
 
   const testBotMutation = useMutation({
     mutationFn: (botId: number) =>
-      apiRequest("POST", `/api/discord/bots/${botId}/test`),
+      apiRequest(`/api/discord/bots/${botId}/test`, { method: "POST" }),
     onSuccess: () => {
       toast({
         title: "Bot Test Successful",
@@ -78,7 +78,7 @@ export default function DiscordWebhookManager() {
 
   const testWebhookMutation = useMutation({
     mutationFn: (webhookUrl: string) =>
-      apiRequest("POST", "/api/discord/test-webhook", { webhookUrl }),
+      apiRequest("/api/discord/test-webhook", { method: "POST", body: JSON.stringify({ webhookUrl }) }),
     onSuccess: () => {
       toast({
         title: "Webhook Test Successful",
@@ -96,7 +96,7 @@ export default function DiscordWebhookManager() {
 
   const deleteBotMutation = useMutation({
     mutationFn: (botId: number) =>
-      apiRequest("DELETE", `/api/discord/bots/${botId}`),
+      apiRequest(`/api/discord/bots/${botId}`, { method: "DELETE" }),
     onSuccess: () => {
       toast({
         title: "Bot Removed",

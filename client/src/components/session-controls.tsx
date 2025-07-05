@@ -18,14 +18,14 @@ export default function SessionControls() {
   const [otpCode, setOtpCode] = useState("");
   const [pendingSession, setPendingSession] = useState<string | null>(null);
 
-  const { data: sessions = [], isLoading } = useQuery({
+  const { data: sessions = [], isLoading } = useQuery<Session[]>({
     queryKey: ["/api/sessions"],
     refetchInterval: 30000,
   });
 
   const updateSessionMutation = useMutation({
     mutationFn: (data: { sessionId: number; status: string }) =>
-      apiRequest("PATCH", `/api/sessions/${data.sessionId}`, { status: data.status }),
+      apiRequest(`/api/sessions/${data.sessionId}`, { method: "PATCH", body: JSON.stringify({ status: data.status }) }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/sessions"] });
       toast({
@@ -43,10 +43,13 @@ export default function SessionControls() {
   });
 
   const requestOTPMutation = useMutation({
-    mutationFn: (phone: string) => apiRequest("POST", "/api/sessions/request-otp", { 
-      phone,
-      phoneNumber: phone,  // Unified compatibility
-      sessionName: `user_${phone.replace(/[+\-\s]/g, '')}`
+    mutationFn: (phone: string) => apiRequest("/api/sessions/request-otp", { 
+      method: "POST",
+      body: JSON.stringify({
+        phone,
+        phoneNumber: phone,  // Unified compatibility
+        sessionName: `user_${phone.replace(/[+\-\s]/g, '')}`
+      })
     }),
     onSuccess: (data: any) => {
       if (data.status === "otp_sent") {
@@ -84,10 +87,13 @@ export default function SessionControls() {
 
   const verifyOTPMutation = useMutation({
     mutationFn: (data: { phone: string; otp: string }) => 
-      apiRequest("POST", "/api/sessions/verify-otp", {
-        ...data,
-        code: data.otp,  // Unified compatibility
-        session_name: `user_${data.phone.replace(/[+\-\s]/g, '')}`
+      apiRequest("/api/sessions/verify-otp", {
+        method: "POST",
+        body: JSON.stringify({
+          ...data,
+          code: data.otp,  // Unified compatibility
+          session_name: `user_${data.phone.replace(/[+\-\s]/g, '')}`
+        })
       }),
     onSuccess: (data: any) => {
       if (data.status === "success") {

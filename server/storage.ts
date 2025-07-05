@@ -300,27 +300,36 @@ export class MemStorage implements IStorage {
   private nextOtpId = 1;
 
   constructor() {
-    // Initialize with sample data
-    this.createUser({
-      pin: "1234",
-      pinHash: "$2b$10$example.hash.for.admin",
-      displayName: "Admin User",
-      isActive: true,
-    });
-    
-    this.createUser({
-      pin: "0000",
-      pinHash: "$2b$10$example.hash.for.admin2",
-      displayName: "Test User",
-      isActive: true,
-    });
-    
-    this.createUser({
-      pin: "5599",
-      pinHash: "$2b$10$example.hash.for.admin3",
-      displayName: "Main User",
-      isActive: true,
-    });
+    this.initializeUsers();
+  }
+  
+  private async initializeUsers() {
+    try {
+      const bcrypt = await import('bcryptjs');
+      // Initialize with properly hashed PINs
+      await this.createUser({
+        pin: "1234",
+        pinHash: await bcrypt.hash("1234", 10),
+        displayName: "Admin User",
+        isActive: true,
+      });
+      
+      await this.createUser({
+        pin: "0000",
+        pinHash: await bcrypt.hash("0000", 10),
+        displayName: "Test User",
+        isActive: true,
+      });
+      
+      await this.createUser({
+        pin: "5599",
+        pinHash: await bcrypt.hash("5599", 10),
+        displayName: "Main User",
+        isActive: true,
+      });
+    } catch (error) {
+      console.log("Error initializing users:", error);
+    }
   }
 
   async getUser(id: number): Promise<User | undefined> {
