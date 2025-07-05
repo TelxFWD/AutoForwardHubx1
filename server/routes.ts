@@ -676,6 +676,78 @@ if __name__ == "__main__":
     }
   });
 
+  // Session management endpoints
+  app.post("/api/copier/users/:userId/pause", async (req, res) => {
+    try {
+      const { userId } = req.params;
+      
+      // Update session status to paused
+      const session = await storage.updateSession(parseInt(userId), { status: "inactive" });
+      
+      await storage.createActivity({
+        type: "session_paused",
+        message: `Session paused: ${session.name}`,
+        details: `User paused session ${userId}`,
+        sessionId: session.id,
+        severity: "info",
+      });
+      
+      res.json({ message: "Session paused successfully", session });
+    } catch (error) {
+      console.error("Pause session error:", error);
+      res.status(500).json({ message: "Failed to pause session" });
+    }
+  });
+
+  app.post("/api/copier/users/:userId/resume", async (req, res) => {
+    try {
+      const { userId } = req.params;
+      
+      // Update session status to active
+      const session = await storage.updateSession(parseInt(userId), { status: "active" });
+      
+      await storage.createActivity({
+        type: "session_resumed",
+        message: `Session resumed: ${session.name}`,
+        details: `User resumed session ${userId}`,
+        sessionId: session.id,
+        severity: "info",
+      });
+      
+      res.json({ message: "Session resumed successfully", session });
+    } catch (error) {
+      console.error("Resume session error:", error);
+      res.status(500).json({ message: "Failed to resume session" });
+    }
+  });
+
+  app.delete("/api/copier/users/:userId", async (req, res) => {
+    try {
+      const { userId } = req.params;
+      
+      // Get session info before deletion
+      const session = await storage.getSession(parseInt(userId));
+      if (!session) {
+        return res.status(404).json({ message: "Session not found" });
+      }
+      
+      // Delete session
+      await storage.deleteSession(parseInt(userId));
+      
+      await storage.createActivity({
+        type: "session_deleted",
+        message: `Session deleted: ${session.name}`,
+        details: `User deleted session ${userId}`,
+        severity: "warning",
+      });
+      
+      res.json({ message: "Session deleted successfully" });
+    } catch (error) {
+      console.error("Delete session error:", error);
+      res.status(500).json({ message: "Failed to delete session" });
+    }
+  });
+
   // Blocklists routes
   app.get("/api/blocklists", async (req, res) => {
     try {

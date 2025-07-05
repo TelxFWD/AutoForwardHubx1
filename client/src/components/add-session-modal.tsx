@@ -149,10 +149,14 @@ export default function AddSessionModal({ isOpen, onClose }: AddSessionModalProp
       return;
     }
     
+    // Set state for later use
+    setSessionName(formData.sessionName);
+    setPhoneNumber(formData.phoneNumber);
+    
     requestOtpMutation.mutate({
       sessionName: formData.sessionName,
       phoneNumber: formData.phoneNumber,
-      sessionFileName: formData.sessionFileName,
+      sessionFileName: formData.sessionFileName || formData.sessionName,
     });
   };
 

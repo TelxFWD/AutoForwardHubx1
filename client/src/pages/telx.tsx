@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import AddSessionModal from "@/components/add-session-modal";
 import { 
   Play, 
   Pause, 
@@ -75,8 +76,15 @@ export default function TelXPage() {
   const [editingPair, setEditingPair] = useState<any>(null);
   const [showBlocklistManager, setShowBlocklistManager] = useState(false);
   const [copierStatus, setCopierStatus] = useState<"running" | "stopped">("stopped");
+  const [showAddSession, setShowAddSession] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // Fetch real sessions from the database
+  const { data: sessions = [], isLoading: sessionsLoading } = useQuery({
+    queryKey: ['/api/sessions'],
+    refetchInterval: 30000,
+  });
 
   // Fetch copier users
   const { data: users = [], isLoading: usersLoading } = useQuery({
@@ -103,7 +111,7 @@ export default function TelXPage() {
 
   // Start/Stop Copier Mutations
   const startCopierMutation = useMutation({
-    mutationFn: () => fetch('/api/start/copier', { method: 'POST' }).then(res => res.json()),
+    mutationFn: () => apiRequest('/api/start/copier', { method: 'POST' }),
     onSuccess: () => {
       setCopierStatus("running");
       toast({ title: "Success", description: "Telegram copier started successfully" });
@@ -115,7 +123,7 @@ export default function TelXPage() {
   });
 
   const stopCopierMutation = useMutation({
-    mutationFn: () => fetch('/api/stop/copier', { method: 'POST' }).then(res => res.json()),
+    mutationFn: () => apiRequest('/api/stop/copier', { method: 'POST' }),
     onSuccess: () => {
       setCopierStatus("stopped");
       toast({ title: "Success", description: "Telegram copier stopped successfully" });
@@ -126,31 +134,44 @@ export default function TelXPage() {
     },
   });
 
-  // User session mutations
+  // User session management mutations
   const pauseUserMutation = useMutation({
-    mutationFn: (userId: string) => fetch(`/api/copier/pause/${userId}`, { method: 'POST' }).then(res => res.json()),
+    mutationFn: (userId: string) => apiRequest(`/api/copier/users/${userId}/pause`, { method: 'POST' }),
     onSuccess: () => {
-      toast({ title: "Success", description: "User paused successfully" });
+      toast({ title: "Success", description: "User session paused successfully" });
       queryClient.invalidateQueries({ queryKey: ['/api/copier/users'] });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
     },
   });
 
   const resumeUserMutation = useMutation({
-    mutationFn: (userId: string) => fetch(`/api/copier/resume/${userId}`, { method: 'POST' }).then(res => res.json()),
+    mutationFn: (userId: string) => apiRequest(`/api/copier/users/${userId}/resume`, { method: 'POST' }),
     onSuccess: () => {
-      toast({ title: "Success", description: "User resumed successfully" });
+      toast({ title: "Success", description: "User session resumed successfully" });
       queryClient.invalidateQueries({ queryKey: ['/api/copier/users'] });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
     },
   });
 
   const deleteUserMutation = useMutation({
-    mutationFn: (userId: string) => fetch(`/api/copier/delete/${userId}`, { method: 'DELETE' }).then(res => res.json()),
+    mutationFn: (userId: string) => apiRequest(`/api/copier/users/${userId}`, { method: 'DELETE' }),
     onSuccess: () => {
-      toast({ title: "Success", description: "User deleted successfully" });
+      toast({ title: "Success", description: "User session deleted successfully" });
       queryClient.invalidateQueries({ queryKey: ['/api/copier/users'] });
       setSelectedUser(null);
     },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
   });
+
+
+
+
 
   // Pair management mutations
   const addPairMutation = useMutation({
@@ -1190,6 +1211,12 @@ export default function TelXPage() {
         <AddPairDialog />
         <EditPairDialog />
         <BlocklistManagerDialog />
+        
+        {/* Add Session Modal */}
+        <AddSessionModal 
+          isOpen={showAddSession} 
+          onClose={() => setShowAddSession(false)} 
+        />
       </div>
     </div>
   );
