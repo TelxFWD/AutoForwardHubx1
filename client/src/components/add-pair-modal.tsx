@@ -7,11 +7,26 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
 import type { CheckedState } from "@radix-ui/react-checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { X, Bot, Webhook } from "lucide-react";
+import { X, Bot, Webhook, Settings, User } from "lucide-react";
 import type { Session, InsertPair, DiscordBot } from "@shared/schema";
+
+// Telegram Bot interface
+interface TelegramBot {
+  id: number;
+  name: string;
+  userId: number;
+  token: string;
+  username: string | null;
+  status: string;
+  isDefault: boolean;
+  lastValidated: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
 
 interface AddPairModalProps {
   isOpen: boolean;
@@ -29,6 +44,7 @@ export default function AddPairModal({ isOpen, onClose }: AddPairModalProps) {
     autoWebhook: false,
     destinationChannel: "",
     botToken: "",
+    telegramBotId: "",
     session: "",
     status: "active",
     enableAI: false,
@@ -45,15 +61,25 @@ export default function AddPairModal({ isOpen, onClose }: AddPairModalProps) {
     queryKey: ["/api/discord/bots"],
   });
 
+  const { data: telegramBots = [] } = useQuery<TelegramBot[]>({
+    queryKey: ["/api/telegram/bots"],
+  });
+
   const createPairMutation = useMutation({
     mutationFn: (data: any) => {
       // Use auto-webhook endpoint if enabled, otherwise use regular Discord endpoint
       const endpoint = data.autoWebhook ? "/api/pairs/discord-auto" : "/api/pairs/discord";
-      const discordPairData = {
+      
+      // Prepare the pair data
+      const pairData = {
         ...data,
-        pairType: "discord"
+        pairType: "discord",
+        // Convert string IDs to numbers
+        telegramBotId: data.telegramBotId ? parseInt(data.telegramBotId) : null,
+        discordBotId: data.discordBotId ? parseInt(data.discordBotId) : null,
       };
-      return apiRequest(endpoint, { method: "POST", body: JSON.stringify(discordPairData) });
+      
+      return apiRequest(endpoint, { method: "POST", body: JSON.stringify(pairData) });
     },
     onSuccess: () => {
       toast({
@@ -274,15 +300,58 @@ export default function AddPairModal({ isOpen, onClose }: AddPairModalProps) {
           </div>
           
           <div>
-            <Label htmlFor="botToken">Telegram Bot Token *</Label>
-            <Input
-              id="botToken"
-              type="password"
-              placeholder="Bot token for posting to destination"
-              value={formData.botToken}
-              onChange={(e) => handleInputChange("botToken", e.target.value)}
-              className="mt-2"
-            />
+            <Label htmlFor="telegramBotId">Telegram Bot Token *</Label>
+            <div className="space-y-2">
+              <Select 
+                value={formData.telegramBotId} 
+                onValueChange={(value) => handleInputChange("telegramBotId", value)}
+              >
+                <SelectTrigger className="mt-2">
+                  <SelectValue placeholder="Select a saved bot token..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {telegramBots.length === 0 ? (
+                    <SelectItem value="" disabled>
+                      No saved bot tokens
+                    </SelectItem>
+                  ) : (
+                    telegramBots.map((bot) => (
+                      <SelectItem key={bot.id} value={bot.id.toString()}>
+                        <div className="flex items-center justify-between w-full">
+                          <div className="flex items-center gap-2">
+                            <User className="h-4 w-4" />
+                            <span>{bot.name}</span>
+                            {bot.isDefault && (
+                              <Badge variant="secondary" className="text-xs">Default</Badge>
+                            )}
+                          </div>
+                          <span className="text-xs text-muted-foreground">
+                            @{bot.username || "unknown"}
+                          </span>
+                        </div>
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+              
+              {telegramBots.length === 0 && (
+                <div className="text-sm text-muted-foreground">
+                  <Button 
+                    type="button" 
+                    variant="link" 
+                    className="p-0 h-auto text-blue-600"
+                    onClick={() => {
+                      // TODO: Open settings or add bot modal
+                      alert("Navigate to Settings to add bot tokens");
+                    }}
+                  >
+                    <Settings className="h-4 w-4 mr-1" />
+                    Add Bot Token in Settings
+                  </Button>
+                </div>
+              )}
+            </div>
           </div>
           
           <div className="flex items-center space-x-2">

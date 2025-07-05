@@ -8,6 +8,7 @@ import ErrorBoundary from "@/components/error-boundary";
 import Sidebar from "@/components/sidebar";
 import Dashboard from "@/pages/dashboard";
 import TelXPage from "@/pages/telx";
+import SettingsPage from "@/pages/settings";
 import { LoginPage } from "@/pages/LoginPage";
 import { AdminPage } from "@/pages/AdminPage";
 
@@ -46,13 +47,14 @@ function App() {
     switch (activeView) {
       case "telx":
         return <TelXPage />;
+      case "settings":
+        return <SettingsPage />;
       case "dashboard":
       case "pairs":
       case "sessions":
       case "blocklist":
       case "monitoring":
       case "webhooks":
-      case "settings":
         return <Dashboard activeTab={activeView} />;
       default:
         return <Dashboard activeTab="dashboard" />;

@@ -31,6 +31,8 @@ export const pairs = pgTable("pairs", {
   autoWebhook: boolean("auto_webhook").default(false), // Auto-create webhook toggle
   destinationChannel: text("destination_channel").notNull(),
   botToken: text("bot_token"), // Optional for telegram pairs
+  telegramBotId: integer("telegram_bot_id").references(() => telegramBots.id),
+  discordBotId: integer("discord_bot_id").references(() => discordBots.id),
   session: text("session").notNull(),
   status: text("status").notNull().default("active"), // active, paused, error
   enableAI: boolean("enable_ai").default(false),
@@ -52,6 +54,19 @@ export const discordBots = pgTable("discord_bots", {
   status: text("status").notNull().default("active"), // active, inactive, error
   guilds: integer("guilds").default(0),
   lastPing: timestamp("last_ping"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const telegramBots = pgTable("telegram_bots", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(), // Associated user
+  name: text("name").notNull(),
+  token: text("token").notNull(),
+  username: text("username"),
+  status: text("status").notNull().default("active"), // active, inactive, error
+  isDefault: boolean("is_default").default(false),
+  lastValidated: timestamp("last_validated"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -178,6 +193,14 @@ export const insertDiscordBotSchema = createInsertSchema(discordBots).omit({
   updatedAt: true,
 });
 
+export const insertTelegramBotSchema = createInsertSchema(telegramBots).omit({
+  id: true,
+  username: true,
+  lastValidated: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export const insertSessionSchema = createInsertSchema(sessions).omit({
   id: true,
   lastActive: true,
@@ -250,6 +273,9 @@ export type InsertOtpVerification = z.infer<typeof insertOtpVerificationSchema>;
 
 export type DiscordBot = typeof discordBots.$inferSelect;
 export type InsertDiscordBot = z.infer<typeof insertDiscordBotSchema>;
+
+export type TelegramBot = typeof telegramBots.$inferSelect;
+export type InsertTelegramBot = z.infer<typeof insertTelegramBotSchema>;
 
 export type PinLogin = z.infer<typeof pinLoginSchema>;
 export type CreateUser = z.infer<typeof createUserSchema>;

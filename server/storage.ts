@@ -1,9 +1,9 @@
 import { 
-  users, pairs, sessions, blocklists, messageMappings, activities, systemStats, otpVerification, discordBots,
+  users, pairs, sessions, blocklists, messageMappings, activities, systemStats, otpVerification, discordBots, telegramBots,
   type User, type InsertUser, type Pair, type InsertPair, type InsertTelegramPair, type InsertDiscordPair,
   type Session, type InsertSession, type Blocklist, type InsertBlocklist,
   type Activity, type InsertActivity, type SystemStats, type OtpVerification, type InsertOtpVerification,
-  type DiscordBot, type InsertDiscordBot
+  type DiscordBot, type InsertDiscordBot, type TelegramBot, type InsertTelegramBot
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, isNull, desc } from "drizzle-orm";
@@ -58,6 +58,14 @@ export interface IStorage {
   createDiscordBot(bot: InsertDiscordBot): Promise<DiscordBot>;
   updateDiscordBot(id: number, updates: Partial<DiscordBot>): Promise<DiscordBot | undefined>;
   deleteDiscordBot(id: number): Promise<boolean>;
+
+  // Telegram Bots
+  getAllTelegramBots(userId?: number): Promise<TelegramBot[]>;
+  getTelegramBot(id: number): Promise<TelegramBot | undefined>;
+  createTelegramBot(bot: InsertTelegramBot): Promise<TelegramBot>;
+  updateTelegramBot(id: number, updates: Partial<TelegramBot>): Promise<TelegramBot | undefined>;
+  deleteTelegramBot(id: number): Promise<boolean>;
+  setDefaultTelegramBot(userId: number, botId: number): Promise<boolean>;
 }
 
 // Database storage implementation
@@ -325,6 +333,64 @@ export class DatabaseStorage implements IStorage {
     if (!db) throw new Error("Database not available");
     const result = await db.delete(discordBots).where(eq(discordBots.id, id));
     return (result.rowCount || 0) > 0;
+  }
+
+  // Telegram Bot Management
+  async getAllTelegramBots(userId?: number): Promise<TelegramBot[]> {
+    if (!db) throw new Error("Database not available");
+    const query = userId 
+      ? db.select().from(telegramBots).where(eq(telegramBots.userId, userId))
+      : db.select().from(telegramBots);
+    
+    return await query;
+  }
+
+  async getTelegramBot(id: number): Promise<TelegramBot | undefined> {
+    if (!db) throw new Error("Database not available");
+    const [bot] = await db.select().from(telegramBots).where(eq(telegramBots.id, id));
+    return bot || undefined;
+  }
+
+  async createTelegramBot(bot: InsertTelegramBot): Promise<TelegramBot> {
+    if (!db) throw new Error("Database not available");
+    const [newBot] = await db.insert(telegramBots).values(bot).returning();
+    return newBot;
+  }
+
+  async updateTelegramBot(id: number, updates: Partial<TelegramBot>): Promise<TelegramBot | undefined> {
+    if (!db) throw new Error("Database not available");
+    const [updated] = await db
+      .update(telegramBots)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(telegramBots.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteTelegramBot(id: number): Promise<boolean> {
+    if (!db) throw new Error("Database not available");
+    const result = await db.delete(telegramBots).where(eq(telegramBots.id, id));
+    return (result.rowCount || 0) > 0;
+  }
+
+  async setDefaultTelegramBot(userId: number, botId: number): Promise<boolean> {
+    if (!db) throw new Error("Database not available");
+    try {
+      // First, unset all defaults for this user
+      await db.update(telegramBots)
+        .set({ isDefault: false })
+        .where(eq(telegramBots.userId, userId));
+      
+      // Then set the specified bot as default
+      await db.update(telegramBots)
+        .set({ isDefault: true })
+        .where(eq(telegramBots.id, botId));
+      
+      return true;
+    } catch (error) {
+      console.error("Error setting default Telegram bot:", error);
+      return false;
+    }
   }
 }
 
@@ -680,6 +746,67 @@ export class MemStorage implements IStorage {
 
   async deleteDiscordBot(id: number): Promise<boolean> {
     return this.discordBots.delete(id);
+  }
+
+  // Telegram Bot Management
+  private telegramBots = new Map<number, TelegramBot>();
+
+  async getAllTelegramBots(userId?: number): Promise<TelegramBot[]> {
+    const bots = Array.from(this.telegramBots.values());
+    return userId ? bots.filter(bot => bot.userId === userId) : bots;
+  }
+
+  async getTelegramBot(id: number): Promise<TelegramBot | undefined> {
+    return this.telegramBots.get(id);
+  }
+
+  async createTelegramBot(bot: InsertTelegramBot): Promise<TelegramBot> {
+    const id = Date.now();
+    const newBot: TelegramBot = {
+      ...bot,
+      id,
+      username: null,
+      lastValidated: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    this.telegramBots.set(id, newBot);
+    return newBot;
+  }
+
+  async updateTelegramBot(id: number, updates: Partial<TelegramBot>): Promise<TelegramBot | undefined> {
+    const existing = this.telegramBots.get(id);
+    if (!existing) return undefined;
+    
+    const updated = { 
+      ...existing, 
+      ...updates, 
+      updatedAt: new Date() 
+    };
+    this.telegramBots.set(id, updated);
+    return updated;
+  }
+
+  async deleteTelegramBot(id: number): Promise<boolean> {
+    return this.telegramBots.delete(id);
+  }
+
+  async setDefaultTelegramBot(userId: number, botId: number): Promise<boolean> {
+    // First, unset all defaults for this user
+    for (const [id, bot] of this.telegramBots) {
+      if (bot.userId === userId) {
+        this.telegramBots.set(id, { ...bot, isDefault: false });
+      }
+    }
+    
+    // Then set the specified bot as default
+    const bot = this.telegramBots.get(botId);
+    if (bot && bot.userId === userId) {
+      this.telegramBots.set(botId, { ...bot, isDefault: true });
+      return true;
+    }
+    
+    return false;
   }
 }
 

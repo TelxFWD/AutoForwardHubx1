@@ -130,6 +130,35 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
+- **January 5, 2025**: **ADVANCED BOT TOKEN MANAGEMENT SYSTEM COMPLETED**
+  - **Centralized Telegram Bot Management**: Complete refactor from manual token input to secure saved token system
+    - New `telegram_bots` table with encrypted token storage and user isolation
+    - Dropdown selection interface replacing manual bot token input fields
+    - Real-time token validation using Telegram's getMe API with username preview
+    - Default bot selection with visual indicators and status tracking
+    - Bot token validation during creation with error handling and success feedback
+  - **Enhanced Add Pair Experience**: Streamlined UX with saved token integration
+    - Dropdown shows saved tokens with labels (Main Bot, VIP Bot, Backup Bot)
+    - Bot username preview (@botusername) in selection dropdown
+    - "Add Bot Token in Settings" quick link when no tokens saved
+    - Automatic conversion of string IDs to numbers for database storage
+    - Support for both legacy manual tokens and new saved token references
+  - **Settings Page with Token Management**: Complete CRUD interface for bot tokens
+    - Add new tokens with custom labels and real-time validation
+    - Set/unset default bot tokens with visual indicators
+    - Delete saved tokens with confirmation
+    - Edit token labels and view token status/validation history
+    - Real-time Telegram API validation with bot info display
+  - **Database Schema Enhancement**: Extended schema to support bot token references
+    - Added `telegramBotId` and `discordBotId` foreign key columns to pairs table
+    - Maintained backward compatibility with legacy `botToken` text field
+    - Proper relational integrity with cascade deletion protection
+    - Enhanced storage interface with full CRUD operations for both bot types
+  - **API Endpoints Complete**: Full REST API for Telegram bot management
+    - GET/POST/PUT/DELETE `/api/telegram/bots` with user isolation
+    - Token validation endpoint with real-time feedback
+    - Set default bot endpoint with user-specific defaults
+    - Integration with existing Discord bot management for unified experience
 - **January 5, 2025**: **ENHANCED OTP VERIFICATION SYSTEM IMPLEMENTED**
   - **Database-Persistent OTP Storage**: Complete replacement of in-memory OTP storage with PostgreSQL persistence
     - New `otp_verification` table with phone_code_hash storage and expiration tracking

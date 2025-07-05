@@ -4,7 +4,8 @@ import { storage } from "./storage";
 import { authStorage } from "./auth-storage";
 import { otpStorage } from "./otp-storage";
 import { DiscordService } from "./discord-service";
-import { insertPairSchema, insertTelegramPairSchema, insertDiscordPairSchema, insertSessionSchema, insertBlocklistSchema, insertActivitySchema, pinLoginSchema, createUserSchema, otpRequestSchema, otpVerifySchema, insertDiscordBotSchema } from "@shared/schema";
+import { TelegramService } from "./telegram-service";
+import { insertPairSchema, insertTelegramPairSchema, insertDiscordPairSchema, insertSessionSchema, insertBlocklistSchema, insertActivitySchema, pinLoginSchema, createUserSchema, otpRequestSchema, otpVerifySchema, insertDiscordBotSchema, insertTelegramBotSchema } from "@shared/schema";
 // Enhanced OTP routes will be registered separately if needed
 import { z } from "zod";
 import { body, validationResult } from "express-validator";
@@ -2433,6 +2434,129 @@ if __name__ == "__main__":
     } catch (error) {
       console.error("Error creating Discord pair with auto-webhook:", error);
       res.status(500).json({ message: "Failed to create pair" });
+    }
+  });
+
+  // Telegram Bot Management Routes
+  app.get("/api/telegram/bots", async (req, res) => {
+    try {
+      const userId = req.query.userId ? parseInt(req.query.userId as string) : undefined;
+      const bots = await storage.getAllTelegramBots(userId);
+      res.json(bots);
+    } catch (error) {
+      console.error("Error fetching Telegram bots:", error);
+      res.status(500).json({ message: "Failed to fetch Telegram bots" });
+    }
+  });
+
+  app.post("/api/telegram/bots", async (req, res) => {
+    try {
+      const botData = insertTelegramBotSchema.parse(req.body);
+      
+      // Validate bot token and get bot info
+      const validation = await TelegramService.validateBotToken(botData.token);
+      if (!validation.valid) {
+        return res.status(400).json({ message: validation.error });
+      }
+
+      const bot = await storage.createTelegramBot({
+        ...botData,
+        username: validation.bot?.username || null,
+        lastValidated: new Date(),
+      });
+
+      res.json(bot);
+    } catch (error) {
+      console.error("Error creating Telegram bot:", error);
+      res.status(500).json({ message: "Failed to create Telegram bot" });
+    }
+  });
+
+  app.put("/api/telegram/bots/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const updates = req.body;
+      
+      const bot = await storage.updateTelegramBot(id, updates);
+      if (!bot) {
+        return res.status(404).json({ message: "Telegram bot not found" });
+      }
+      
+      res.json(bot);
+    } catch (error) {
+      console.error("Error updating Telegram bot:", error);
+      res.status(500).json({ message: "Failed to update Telegram bot" });
+    }
+  });
+
+  app.delete("/api/telegram/bots/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const success = await storage.deleteTelegramBot(id);
+      
+      if (!success) {
+        return res.status(404).json({ message: "Telegram bot not found" });
+      }
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting Telegram bot:", error);
+      res.status(500).json({ message: "Failed to delete Telegram bot" });
+    }
+  });
+
+  app.post("/api/telegram/bots/:id/set-default", async (req, res) => {
+    try {
+      const botId = parseInt(req.params.id);
+      const { userId } = req.body;
+      
+      if (!userId) {
+        return res.status(400).json({ message: "userId is required" });
+      }
+
+      const success = await storage.setDefaultTelegramBot(userId, botId);
+      
+      if (!success) {
+        return res.status(404).json({ message: "Failed to set default bot" });
+      }
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error setting default Telegram bot:", error);
+      res.status(500).json({ message: "Failed to set default bot" });
+    }
+  });
+
+  // Telegram Bot Validation Routes
+  app.post("/api/telegram/bots/validate", async (req, res) => {
+    try {
+      const { token } = req.body;
+      
+      if (!token) {
+        return res.status(400).json({ message: "Bot token is required" });
+      }
+
+      const result = await TelegramService.validateBotToken(token);
+      res.json(result);
+    } catch (error) {
+      console.error("Error validating Telegram bot token:", error);
+      res.status(500).json({ message: "Failed to validate bot token" });
+    }
+  });
+
+  app.post("/api/telegram/bots/test", async (req, res) => {
+    try {
+      const { token } = req.body;
+      
+      if (!token) {
+        return res.status(400).json({ message: "Bot token is required" });
+      }
+
+      const result = await TelegramService.testBot(token);
+      res.json(result);
+    } catch (error) {
+      console.error("Error testing Telegram bot:", error);
+      res.status(500).json({ message: "Failed to test bot" });
     }
   });
 
