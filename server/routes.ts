@@ -350,21 +350,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // OTP Session endpoints
+  // Unified OTP Session endpoints - accepts both formats
   app.post("/api/sessions/request-otp", async (req, res) => {
     try {
-      const { sessionName, phoneNumber, sessionFileName } = req.body;
+      // Support both Dashboard format { sessionName, phoneNumber } and TelX format { phone }
+      const { sessionName, phoneNumber, sessionFileName, phone } = req.body;
       
-      if (!sessionName || !phoneNumber) {
-        return res.status(400).json({ message: "sessionName and phoneNumber are required" });
+      // Use phone parameter or phoneNumber parameter
+      const actualPhone = phone || phoneNumber;
+      // Auto-generate session name if not provided
+      const actualSessionName = sessionName || `user_${actualPhone?.replace(/[+\-\s]/g, '')}`;
+      
+      if (!actualPhone) {
+        return res.status(400).json({ message: "phone or phoneNumber is required" });
       }
       
       // Use Python subprocess to handle OTP request
       const { spawn } = await import("child_process");
       const pythonProcess = spawn("python", [
         "telegram_copier/session_loader.py",
-        "--phone", phoneNumber,
-        "--session-name", sessionFileName || sessionName
+        "--phone", actualPhone,
+        "--session-name", sessionFileName || actualSessionName
       ]);
       
       let output = "";
@@ -385,21 +391,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
             
             // Store OTP session data if OTP was sent successfully
             if (result.status === "otp_sent" && result.phone_code_hash) {
-              otpStorage.storeOTPSession(phoneNumber, sessionName, result.phone_code_hash);
-              console.log(`Stored OTP session for ${phoneNumber} with hash: ${result.phone_code_hash.substring(0, 10)}...`);
+              otpStorage.storeOTPSession(actualPhone, actualSessionName, result.phone_code_hash);
+              console.log(`Stored OTP session for ${actualPhone} with hash: ${result.phone_code_hash.substring(0, 10)}...`);
             }
             
             // Log activity
             await storage.createActivity({
               type: "otp_request",
-              message: `OTP requested for ${phoneNumber}`,
-              details: `Session: ${sessionName} - ${result.message}`,
+              message: `OTP requested for ${actualPhone}`,
+              details: `Session: ${actualSessionName} - ${result.message}`,
               severity: result.status === "otp_sent" ? "success" : "info",
             });
             
             res.json({
               message: "OTP sent successfully",
-              sessionName: sessionName,
+              sessionName: actualSessionName,
               status: result.status,
               details: result.message
             });
@@ -973,118 +979,50 @@ if __name__ == "__main__":
     }
   });
 
-  // Copier management routes
+  // Copier management routes - unified with sessions API
   app.get("/api/copier/users", async (req, res) => {
     try {
-      // Return mock user data based on user_copies.json format
-      const users = [
-        {
-          user_id: "example_user",
-          session_file: "sessions/example_user.session",
-          status: "active",
-          pairs: [
-            {
-              source: "@example_source",
-              destination: "@example_dest",
-              strip_rules: {
-                remove_mentions: true,
-                header_patterns: [],
-                footer_patterns: []
-              }
-            }
-          ]
-        }
-      ];
+      // Get real sessions from database and format for TelX page
+      const sessions = await storage.getAllSessions();
+      const pairs = await storage.getAllPairs();
+      
+      // Transform sessions into TelX format
+      const users = sessions.map(session => ({
+        user_id: session.name,
+        session_file: session.sessionFile,
+        status: session.status,
+        phone: session.phone,
+        total_pairs: pairs.filter(p => p.session === session.name).length,
+        trap_hits: 0, // Will be enhanced with real trap data
+        pairs: pairs.filter(p => p.session === session.name).map(pair => ({
+          source: pair.sourceChannel,
+          destination: pair.destinationChannel,
+          strip_rules: {
+            remove_mentions: true,
+            header_patterns: [],
+            footer_patterns: []
+          }
+        }))
+      }));
       
       res.json(users);
     } catch (error) {
+      console.error("Failed to fetch copier users:", error);
       res.status(500).json({ message: "Failed to fetch copier users" });
     }
   });
 
-  // Session management routes
-  app.post("/api/sessions/request-otp", async (req, res) => {
-    try {
-      const { phone } = req.body;
-      
-      if (!phone) {
-        return res.status(400).json({ success: false, message: "Phone number required" });
-      }
-      
-      // Execute the Python session loader to request OTP
-      const { spawn } = await import('child_process');
-      const pythonProcess = spawn('python3', ['telegram_copier/session_loader.py', '--phone', phone]);
-      
-      let stdout = '';
-      let stderr = '';
-      
-      pythonProcess.stdout.on('data', (data) => {
-        stdout += data.toString();
-      });
-      
-      pythonProcess.stderr.on('data', (data) => {
-        stderr += data.toString();
-      });
-      
-      pythonProcess.on('close', async (code) => {
-        try {
-          if (code === 0 && stdout) {
-            const result = JSON.parse(stdout.trim());
-            
-            // Log OTP request
-            await storage.createActivity({
-              type: 'session',
-              message: `OTP request ${result.status}`,
-              details: `Phone: ${phone}, Status: ${result.status}, Message: ${result.message}`,
-              severity: result.status === 'otp_sent' ? 'info' : 'warning'
-            });
-            
-            if (result.status === 'otp_sent') {
-              res.json({ 
-                success: true, 
-                message: result.message,
-                session_name: result.session_name
-              });
-            } else {
-              res.status(400).json({ 
-                success: false, 
-                message: result.message 
-              });
-            }
-          } else {
-            console.error('Session loader error:', stderr);
-            await storage.createActivity({
-              type: 'session',
-              message: 'OTP request failed',
-              details: `Phone: ${phone}, Error: ${stderr || 'Unknown error'}`,
-              severity: 'error'
-            });
-            
-            res.status(500).json({ 
-              success: false, 
-              message: "Failed to request OTP. Please check your Telegram API credentials." 
-            });
-          }
-        } catch (parseError) {
-          console.error('Failed to parse session loader response:', parseError);
-          res.status(500).json({ 
-            success: false, 
-            message: "Internal error processing OTP request" 
-          });
-        }
-      });
-      
-    } catch (error) {
-      console.error('OTP request error:', error);
-      res.status(500).json({ success: false, message: "Failed to request OTP" });
-    }
-  });
+  // Duplicate OTP endpoint removed - using unified endpoint above
 
   app.post("/api/sessions/verify-otp", async (req, res) => {
     try {
-      const { phone, code, session_name } = req.body;
+      // Support both Dashboard format { phone, otp } and TelX format { phone, code }
+      const { phone, code, otp, session_name } = req.body;
       
-      if (!phone || !code) {
+      const actualPhone = phone;
+      const actualOtp = code || otp;
+      
+      if (!actualPhone || !actualOtp) {
         return res.status(400).json({ 
           success: false, 
           message: "Phone and OTP code required" 
@@ -1093,7 +1031,7 @@ if __name__ == "__main__":
       
       // Execute the Python session loader to verify OTP
       const { spawn } = await import('child_process');
-      const pythonProcess = spawn('python3', ['telegram_copier/session_loader.py', '--phone', phone, '--otp', code, '--session-name', session_name || '']);
+      const pythonProcess = spawn('python3', ['telegram_copier/session_loader.py', '--phone', actualPhone, '--otp', actualOtp, '--session-name', session_name || '']);
       
       let stdout = '';
       let stderr = '';
@@ -1116,7 +1054,7 @@ if __name__ == "__main__":
               const session = await storage.createSession({
                 userId: 1, // Default user ID - will be enhanced with proper auth
                 name: result.session_name,
-                phone: phone,
+                phone: actualPhone,
                 sessionFile: `sessions/${result.session_name}.session`,
                 status: 'active'
               });
@@ -1125,7 +1063,7 @@ if __name__ == "__main__":
               await storage.createActivity({
                 type: 'session_connected',
                 message: 'Session authenticated',
-                details: `Session connected for ${result.user_info.first_name} (${phone})`,
+                details: `Session connected for ${result.user_info.first_name} (${actualPhone})`,
                 severity: 'info'
               });
               
@@ -1140,7 +1078,7 @@ if __name__ == "__main__":
               await storage.createActivity({
                 type: 'session',
                 message: 'OTP verification failed',
-                details: `Phone: ${phone}, Error: ${result.message}`,
+                details: `Phone: ${actualPhone}, Error: ${result.message}`,
                 severity: 'warning'
               });
               

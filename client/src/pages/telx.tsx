@@ -403,13 +403,19 @@ export default function TelXPage() {
     const requestOtp = async () => {
       setLoading(true);
       try {
+        // Send unified request with both phone and sessionName for compatibility
+        const sessionName = `user_${phone.replace(/[+\-\s]/g, '')}`;
         const response = await fetch('/api/sessions/request-otp', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ phone }),
+          body: JSON.stringify({ 
+            phone,
+            phoneNumber: phone, // Dashboard compatibility
+            sessionName: sessionName
+          }),
         });
         const result = await response.json();
-        if (result.success !== false) {
+        if (result.message || result.sessionName) {
           setStep("otp");
           toast({ title: "OTP Sent", description: "Check your Telegram for the verification code" });
         } else {
@@ -425,15 +431,23 @@ export default function TelXPage() {
     const verifyOtp = async () => {
       setLoading(true);
       try {
+        // Send unified request with both formats for compatibility
         const response = await fetch('/api/sessions/verify-otp', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ phone, otp }),
+          body: JSON.stringify({ 
+            phone, 
+            otp,
+            code: otp, // Dashboard compatibility
+            session_name: `user_${phone.replace(/[+\-\s]/g, '')}`
+          }),
         });
         const result = await response.json();
-        if (result.success !== false) {
+        if (result.success !== false || result.session) {
           toast({ title: "Success", description: "User session created successfully" });
+          // Invalidate both session endpoints to update both pages
           queryClient.invalidateQueries({ queryKey: ['/api/copier/users'] });
+          queryClient.invalidateQueries({ queryKey: ['/api/sessions'] });
           setShowAddUser(false);
           setPhone("");
           setOtp("");

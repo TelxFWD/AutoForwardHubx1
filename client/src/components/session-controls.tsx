@@ -43,7 +43,11 @@ export default function SessionControls() {
   });
 
   const requestOTPMutation = useMutation({
-    mutationFn: (phone: string) => apiRequest("POST", "/api/sessions/request-otp", { phone }),
+    mutationFn: (phone: string) => apiRequest("POST", "/api/sessions/request-otp", { 
+      phone,
+      phoneNumber: phone,  // Unified compatibility
+      sessionName: `user_${phone.replace(/[+\-\s]/g, '')}`
+    }),
     onSuccess: (data: any) => {
       if (data.status === "otp_sent") {
         setPendingSession(data.session_name);
@@ -54,7 +58,9 @@ export default function SessionControls() {
       } else if (data.status === "already_logged_in") {
         setShowOTPForm(false);
         setPhoneNumber("");
+        // Invalidate both endpoints to sync Dashboard and TelX
         queryClient.invalidateQueries({ queryKey: ["/api/sessions"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/copier/users"] });
         toast({
           title: "Already Logged In",
           description: data.message,
@@ -78,14 +84,20 @@ export default function SessionControls() {
 
   const verifyOTPMutation = useMutation({
     mutationFn: (data: { phone: string; otp: string }) => 
-      apiRequest("POST", "/api/sessions/verify-otp", data),
+      apiRequest("POST", "/api/sessions/verify-otp", {
+        ...data,
+        code: data.otp,  // Unified compatibility
+        session_name: `user_${data.phone.replace(/[+\-\s]/g, '')}`
+      }),
     onSuccess: (data: any) => {
       if (data.status === "success") {
         setShowOTPForm(false);
         setPhoneNumber("");
         setOtpCode("");
         setPendingSession(null);
+        // Invalidate both endpoints to sync Dashboard and TelX
         queryClient.invalidateQueries({ queryKey: ["/api/sessions"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/copier/users"] });
         queryClient.invalidateQueries({ queryKey: ["/api/activities"] });
         toast({
           title: "Session Created",
