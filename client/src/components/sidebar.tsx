@@ -7,15 +7,20 @@ import {
   Activity, 
   Webhook, 
   Settings,
-  MessageSquare
+  MessageSquare,
+  LogOut,
+  User
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface SidebarProps {
   activeView: string;
   onViewChange: (view: string) => void;
+  user?: any;
+  onLogout?: () => void;
 }
 
-export default function Sidebar({ activeView, onViewChange }: SidebarProps) {
+export default function Sidebar({ activeView, onViewChange, user, onLogout }: SidebarProps) {
   const navigationItems = [
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
     { id: "telx", label: "TelX", icon: MessageSquare },
@@ -64,6 +69,34 @@ export default function Sidebar({ activeView, onViewChange }: SidebarProps) {
           })}
         </ul>
       </nav>
+      
+      {/* User Profile & Logout */}
+      {user && onLogout && (
+        <div className="mt-auto p-4 border-t border-gray-200 dark:border-gray-700">
+          <div className="flex items-center space-x-3 mb-3">
+            <div className="w-8 h-8 bg-gray-300 dark:bg-gray-600 rounded-full flex items-center justify-center">
+              <User className="w-4 h-4 text-gray-600 dark:text-gray-300" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                {user.displayName || `User ${user.pin}`}
+              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                PIN: {user.pin}
+              </p>
+            </div>
+          </div>
+          <Button
+            onClick={onLogout}
+            variant="outline"
+            size="sm"
+            className="w-full justify-start"
+          >
+            <LogOut className="w-4 h-4 mr-2" />
+            Logout
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

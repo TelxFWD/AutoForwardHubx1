@@ -1,10 +1,141 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertPairSchema, insertSessionSchema, insertBlocklistSchema, insertActivitySchema } from "@shared/schema";
+import { authStorage } from "./auth-storage";
+import { insertPairSchema, insertSessionSchema, insertBlocklistSchema, insertActivitySchema, pinLoginSchema, createUserSchema } from "@shared/schema";
 import { z } from "zod";
 
+// Authentication middleware
+function requireAuth(req: any, res: any, next: any) {
+  const token = req.headers.authorization?.replace('Bearer ', '');
+  if (!token) {
+    return res.status(401).json({ message: 'Authentication required' });
+  }
+  
+  authStorage.validateSession(token).then(user => {
+    if (!user) {
+      return res.status(401).json({ message: 'Invalid session' });
+    }
+    req.user = user;
+    next();
+  }).catch(() => {
+    res.status(401).json({ message: 'Authentication failed' });
+  });
+}
+
+// Admin middleware (hardcoded admin PIN: 0000)
+function requireAdmin(req: any, res: any, next: any) {
+  const adminPin = req.headers['x-admin-pin'];
+  if (adminPin !== '0000') {
+    return res.status(403).json({ message: 'Admin access required' });
+  }
+  next();
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Authentication routes
+  app.post("/api/auth/login", async (req, res) => {
+    try {
+      const { pin } = pinLoginSchema.parse(req.body);
+      const user = await authStorage.authenticateUser(pin);
+      
+      if (!user) {
+        return res.status(401).json({ message: 'Invalid PIN' });
+      }
+      
+      const session = await authStorage.createUserSession(user.id);
+      
+      res.json({
+        user: {
+          id: user.id,
+          pin: user.pin,
+          displayName: user.displayName,
+          lastLogin: user.lastLogin
+        },
+        token: session.sessionToken,
+        expiresAt: session.expiresAt
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: "Invalid PIN format", errors: error.errors });
+      } else {
+        res.status(500).json({ message: "Login failed" });
+      }
+    }
+  });
+
+  app.post("/api/auth/logout", requireAuth, async (req: any, res) => {
+    try {
+      const token = req.headers.authorization?.replace('Bearer ', '');
+      if (token) {
+        await authStorage.deleteSession(token);
+      }
+      res.json({ message: 'Logged out successfully' });
+    } catch (error) {
+      res.status(500).json({ message: "Logout failed" });
+    }
+  });
+
+  app.get("/api/auth/user", requireAuth, (req: any, res) => {
+    res.json({
+      id: req.user.id,
+      pin: req.user.pin,
+      displayName: req.user.displayName,
+      lastLogin: req.user.lastLogin
+    });
+  });
+
+  // Admin routes (protected with admin PIN)
+  app.get("/api/admin/users", requireAdmin, async (req, res) => {
+    try {
+      const users = await authStorage.getAllUsers();
+      res.json(users.map(user => ({
+        id: user.id,
+        pin: user.pin,
+        displayName: user.displayName,
+        lastLogin: user.lastLogin,
+        createdAt: user.createdAt
+      })));
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch users" });
+    }
+  });
+
+  app.post("/api/admin/users", requireAdmin, async (req, res) => {
+    try {
+      const userData = createUserSchema.parse(req.body);
+      const user = await authStorage.createUser(userData);
+      
+      res.status(201).json({
+        id: user.id,
+        pin: user.pin,
+        displayName: user.displayName,
+        createdAt: user.createdAt
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: "Invalid user data", errors: error.errors });
+      } else {
+        const message = error instanceof Error ? error.message : "Failed to create user";
+        res.status(500).json({ message });
+      }
+    }
+  });
+
+  app.delete("/api/admin/users/:id", requireAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const success = await authStorage.deleteUser(id);
+      
+      if (!success) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+      
+      res.json({ message: 'User deleted successfully' });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete user" });
+    }
+  });
   // Pairs routes
   app.get("/api/pairs", async (req, res) => {
     try {

@@ -4,13 +4,26 @@ import { z } from "zod";
 
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
-  username: text("username").notNull().unique(),
-  password: text("password").notNull(),
+  pin: text("pin").notNull().unique(), // 4-digit PIN (hashed)
+  pinHash: text("pin_hash").notNull(), // bcrypt hash of PIN
+  displayName: text("display_name"), // Optional display name
+  isActive: boolean("is_active").default(true),
+  lastLogin: timestamp("last_login"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const userSessions = pgTable("user_sessions", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
+  sessionToken: text("session_token").notNull().unique(),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 export const pairs = pgTable("pairs", {
   id: serial("id").primaryKey(),
-  name: text("name").notNull().unique(),
+  userId: integer("user_id").notNull(), // Associated user
+  name: text("name").notNull(),
   sourceChannel: text("source_channel").notNull(),
   discordWebhook: text("discord_webhook").notNull(),
   destinationChannel: text("destination_channel").notNull(),
@@ -26,7 +39,8 @@ export const pairs = pgTable("pairs", {
 
 export const sessions = pgTable("sessions", {
   id: serial("id").primaryKey(),
-  name: text("name").notNull().unique(),
+  userId: integer("user_id").notNull(), // Associated user
+  name: text("name").notNull(),
   phone: text("phone").notNull(),
   sessionFile: text("session_file").notNull(),
   status: text("status").notNull().default("active"), // active, inactive, error
@@ -74,9 +88,15 @@ export const systemStats = pgTable("system_stats", {
 });
 
 // Insert schemas
-export const insertUserSchema = createInsertSchema(users).pick({
-  username: true,
-  password: true,
+export const insertUserSchema = createInsertSchema(users).omit({
+  id: true,
+  lastLogin: true,
+  createdAt: true,
+});
+
+export const insertUserSessionSchema = createInsertSchema(userSessions).omit({
+  id: true,
+  createdAt: true,
 });
 
 export const insertPairSchema = createInsertSchema(pairs).omit({
@@ -103,9 +123,22 @@ export const insertActivitySchema = createInsertSchema(activities).omit({
   createdAt: true,
 });
 
+// Additional schemas for PIN validation
+export const pinLoginSchema = z.object({
+  pin: z.string().regex(/^\d{4}$/, "PIN must be exactly 4 digits"),
+});
+
+export const createUserSchema = z.object({
+  pin: z.string().regex(/^\d{4}$/, "PIN must be exactly 4 digits"),
+  displayName: z.string().optional(),
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
+
+export type UserSession = typeof userSessions.$inferSelect;
+export type InsertUserSession = z.infer<typeof insertUserSessionSchema>;
 
 export type Pair = typeof pairs.$inferSelect;
 export type InsertPair = z.infer<typeof insertPairSchema>;
@@ -122,3 +155,6 @@ export type Activity = typeof activities.$inferSelect;
 export type InsertActivity = z.infer<typeof insertActivitySchema>;
 
 export type SystemStats = typeof systemStats.$inferSelect;
+
+export type PinLogin = z.infer<typeof pinLoginSchema>;
+export type CreateUser = z.infer<typeof createUserSchema>;
