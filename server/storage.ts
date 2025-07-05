@@ -1,8 +1,8 @@
 import { 
-  users, pairs, sessions, blocklists, messageMappings, activities, systemStats,
+  users, pairs, sessions, blocklists, messageMappings, activities, systemStats, otpVerification,
   type User, type InsertUser, type Pair, type InsertPair, 
   type Session, type InsertSession, type Blocklist, type InsertBlocklist,
-  type Activity, type InsertActivity, type SystemStats
+  type Activity, type InsertActivity, type SystemStats, type OtpVerification, type InsertOtpVerification
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, isNull, desc } from "drizzle-orm";
@@ -43,6 +43,13 @@ export interface IStorage {
   // System Stats
   getSystemStats(): Promise<SystemStats | undefined>;
   updateSystemStats(stats: Partial<SystemStats>): Promise<SystemStats>;
+
+  // OTP Verification
+  getOtpVerification(phoneNumber: string): Promise<OtpVerification | undefined>;
+  createOtpVerification(otp: InsertOtpVerification): Promise<OtpVerification>;
+  updateOtpVerification(phoneNumber: string, updates: Partial<OtpVerification>): Promise<OtpVerification | undefined>;
+  deleteOtpVerification(phoneNumber: string): Promise<boolean>;
+  cleanExpiredOtpVerifications(): Promise<void>;
 }
 
 // Database storage implementation
@@ -214,6 +221,66 @@ export class DatabaseStorage implements IStorage {
       .returning();
     return updatedStats;
   }
+
+  // OTP Verification methods
+  async getOtpVerification(phoneNumber: string): Promise<OtpVerification | undefined> {
+    if (!db) throw new Error("Database not available");
+    const [verification] = await db
+      .select()
+      .from(otpVerification)
+      .where(eq(otpVerification.phoneNumber, phoneNumber))
+      .limit(1);
+    return verification || undefined;
+  }
+
+  async createOtpVerification(otp: InsertOtpVerification): Promise<OtpVerification> {
+    if (!db) throw new Error("Database not available");
+    
+    // First, delete any existing verification for this phone number
+    await db
+      .delete(otpVerification)
+      .where(eq(otpVerification.phoneNumber, otp.phoneNumber));
+    
+    // Create new verification
+    const [newVerification] = await db
+      .insert(otpVerification)
+      .values({
+        phoneNumber: otp.phoneNumber,
+        phoneCodeHash: otp.phoneCodeHash,
+        sessionName: otp.sessionName,
+        userId: otp.userId,
+        status: otp.status || "pending",
+        expiresAt: otp.expiresAt,
+      })
+      .returning();
+    return newVerification;
+  }
+
+  async updateOtpVerification(phoneNumber: string, updates: Partial<OtpVerification>): Promise<OtpVerification | undefined> {
+    if (!db) throw new Error("Database not available");
+    const [updated] = await db
+      .update(otpVerification)
+      .set(updates)
+      .where(eq(otpVerification.phoneNumber, phoneNumber))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteOtpVerification(phoneNumber: string): Promise<boolean> {
+    if (!db) throw new Error("Database not available");
+    const result = await db
+      .delete(otpVerification)
+      .where(eq(otpVerification.phoneNumber, phoneNumber));
+    return (result.rowCount || 0) > 0;
+  }
+
+  async cleanExpiredOtpVerifications(): Promise<void> {
+    if (!db) throw new Error("Database not available");
+    const now = new Date();
+    await db
+      .delete(otpVerification)
+      .where(eq(otpVerification.expiresAt, now));
+  }
 }
 
 // In-memory storage implementation
@@ -223,12 +290,14 @@ export class MemStorage implements IStorage {
   private sessions = new Map<number, Session>();
   private blocklists = new Map<number, Blocklist>();
   private activities = new Map<number, Activity>();
+  private otpVerifications = new Map<string, OtpVerification>();
   private systemStats: SystemStats | undefined;
   private nextUserId = 1;
   private nextPairId = 1;
   private nextSessionId = 1;
   private nextBlocklistId = 1;
   private nextActivityId = 1;
+  private nextOtpId = 1;
 
   constructor() {
     // Initialize with sample data
@@ -452,6 +521,58 @@ export class MemStorage implements IStorage {
     };
     
     return this.systemStats;
+  }
+
+  // OTP Verification methods for MemStorage
+  async getOtpVerification(phoneNumber: string): Promise<OtpVerification | undefined> {
+    return this.otpVerifications.get(phoneNumber);
+  }
+
+  async createOtpVerification(otp: InsertOtpVerification): Promise<OtpVerification> {
+    // Delete any existing verification for this phone number
+    this.otpVerifications.delete(otp.phoneNumber);
+    
+    const newVerification: OtpVerification = {
+      id: this.nextOtpId++,
+      phoneNumber: otp.phoneNumber,
+      phoneCodeHash: otp.phoneCodeHash,
+      sessionName: otp.sessionName,
+      userId: otp.userId || null,
+      status: otp.status || "pending",
+      expiresAt: otp.expiresAt,
+      createdAt: new Date(),
+    };
+    
+    this.otpVerifications.set(otp.phoneNumber, newVerification);
+    return newVerification;
+  }
+
+  async updateOtpVerification(phoneNumber: string, updates: Partial<OtpVerification>): Promise<OtpVerification | undefined> {
+    const existing = this.otpVerifications.get(phoneNumber);
+    if (!existing) return undefined;
+    
+    const updated = { ...existing, ...updates };
+    this.otpVerifications.set(phoneNumber, updated);
+    return updated;
+  }
+
+  async deleteOtpVerification(phoneNumber: string): Promise<boolean> {
+    return this.otpVerifications.delete(phoneNumber);
+  }
+
+  async cleanExpiredOtpVerifications(): Promise<void> {
+    const now = new Date();
+    const expiredPhones: string[] = [];
+    
+    this.otpVerifications.forEach((verification, phoneNumber) => {
+      if (verification.expiresAt <= now) {
+        expiredPhones.push(phoneNumber);
+      }
+    });
+    
+    expiredPhones.forEach(phoneNumber => {
+      this.otpVerifications.delete(phoneNumber);
+    });
   }
 }
 

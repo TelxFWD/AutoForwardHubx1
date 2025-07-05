@@ -130,6 +130,28 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
+- **January 5, 2025**: **ENHANCED OTP VERIFICATION SYSTEM IMPLEMENTED**
+  - **Database-Persistent OTP Storage**: Complete replacement of in-memory OTP storage with PostgreSQL persistence
+    - New `otp_verification` table with phone_code_hash storage and expiration tracking
+    - Automatic cleanup of expired OTP sessions to prevent stale data accumulation
+    - Single OTP request per phone number enforcement with invalidation of previous requests
+    - Secure storage of latest phone_code_hash for proper Telegram API verification
+  - **Advanced Security & Rate Limiting**: Enhanced protection against abuse and spam
+    - Rate limiting: 3 OTP requests per minute per IP, 5 verification attempts per minute per IP
+    - 2-minute OTP expiration window aligned with Telegram's active verification window
+    - Process timeout handling (30 seconds) for all Telegram API operations
+    - Proper cleanup of expired sessions and automatic status updates
+  - **Enhanced Frontend with Real-Time Countdown**: Complete UI/UX improvement for OTP flow
+    - Real-time countdown timer with MM:SS format display
+    - Automatic OTP input disabling when expired with clear user messaging
+    - "OTP Expired. Please request a new code." and "OTP Verified Successfully." messages
+    - Resend OTP functionality with proper state management and visual feedback
+    - Live status checking every 5 seconds with automatic UI updates
+  - **Robust Error Handling & User Feedback**: Complete error management system
+    - Clear error messages for invalid phone numbers, expired codes, and API failures
+    - Automatic fallback to phone input when OTP expires during verification
+    - Process timeout protection with user-friendly timeout messages
+    - Prevents reuse of old hashes through database-level enforcement
 - **January 5, 2025**: **UNIFIED SESSION MANAGEMENT COMPLETED**
   - **Cross-Platform Session Synchronization**: Complete unification of session management between Dashboard and TelX page
     - Single unified API endpoint `/api/sessions/request-otp` accepts both parameter formats

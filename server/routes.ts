@@ -3,7 +3,8 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { authStorage } from "./auth-storage";
 import { otpStorage } from "./otp-storage";
-import { insertPairSchema, insertSessionSchema, insertBlocklistSchema, insertActivitySchema, pinLoginSchema, createUserSchema } from "@shared/schema";
+import { insertPairSchema, insertSessionSchema, insertBlocklistSchema, insertActivitySchema, pinLoginSchema, createUserSchema, otpRequestSchema, otpVerifySchema } from "@shared/schema";
+import { registerEnhancedOtpRoutes } from "./enhanced-otp-routes";
 import { z } from "zod";
 import { body, validationResult } from "express-validator";
 import rateLimit from "express-rate-limit";
@@ -1822,6 +1823,9 @@ if __name__ == "__main__":
       res.status(500).json({ error: "Failed to remove item from blocklist" });
     }
   });
+
+  // Register enhanced OTP routes (replaces legacy OTP endpoints)
+  registerEnhancedOtpRoutes(app);
 
   const httpServer = createServer(app);
   return httpServer;

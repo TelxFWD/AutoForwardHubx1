@@ -87,6 +87,17 @@ export const systemStats = pgTable("system_stats", {
   lastUpdated: timestamp("last_updated").defaultNow().notNull(),
 });
 
+export const otpVerification = pgTable("otp_verification", {
+  id: serial("id").primaryKey(),
+  phoneNumber: text("phone_number").notNull().unique(),
+  phoneCodeHash: text("phone_code_hash").notNull(),
+  sessionName: text("session_name").notNull(),
+  userId: integer("user_id"),
+  status: text("status").notNull().default("pending"), // pending, verified, expired
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
@@ -123,6 +134,11 @@ export const insertActivitySchema = createInsertSchema(activities).omit({
   createdAt: true,
 });
 
+export const insertOtpVerificationSchema = createInsertSchema(otpVerification).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Additional schemas for PIN validation
 export const pinLoginSchema = z.object({
   pin: z.string().min(4, "PIN must be at least 4 characters").max(4, "PIN must be at most 4 characters").regex(/^\d{4}$/, "PIN must be exactly 4 digits"),
@@ -131,6 +147,17 @@ export const pinLoginSchema = z.object({
 export const createUserSchema = z.object({
   pin: z.string().min(4, "PIN must be at least 4 characters").max(4, "PIN must be at most 4 characters").regex(/^\d{4}$/, "PIN must be exactly 4 digits"),
   displayName: z.string().min(1, "Display name is required").optional(),
+});
+
+// OTP schemas
+export const otpRequestSchema = z.object({
+  phoneNumber: z.string().min(10, "Phone number must be at least 10 digits").max(15, "Phone number must be at most 15 digits"),
+  sessionName: z.string().min(1, "Session name is required").optional(),
+});
+
+export const otpVerifySchema = z.object({
+  phoneNumber: z.string().min(10, "Phone number must be at least 10 digits").max(15, "Phone number must be at most 15 digits"),
+  code: z.string().min(5, "OTP code must be at least 5 digits").max(6, "OTP code must be at most 6 digits"),
 });
 
 // Types
@@ -156,5 +183,10 @@ export type InsertActivity = z.infer<typeof insertActivitySchema>;
 
 export type SystemStats = typeof systemStats.$inferSelect;
 
+export type OtpVerification = typeof otpVerification.$inferSelect;
+export type InsertOtpVerification = z.infer<typeof insertOtpVerificationSchema>;
+
 export type PinLogin = z.infer<typeof pinLoginSchema>;
 export type CreateUser = z.infer<typeof createUserSchema>;
+export type OtpRequest = z.infer<typeof otpRequestSchema>;
+export type OtpVerify = z.infer<typeof otpVerifySchema>;
