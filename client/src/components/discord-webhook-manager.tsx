@@ -29,6 +29,7 @@ export default function DiscordWebhookManager() {
   // Fetch Discord bots from API
   const { data: discordBots = [], isLoading: isLoadingBots } = useQuery<DiscordBot[]>({
     queryKey: ["/api/discord/bots"],
+    queryFn: () => apiRequest("/api/discord/bots?userId=1"),
   });
 
   const addBotMutation = useMutation({
