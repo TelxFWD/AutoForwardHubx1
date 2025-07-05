@@ -42,9 +42,13 @@ export function AdminPage() {
 
   const createUserMutation = useMutation({
     mutationFn: async (userData: { pin: string; displayName?: string }) => {
+      console.log("=== MUTATION FUNCTION ===");
+      console.log("Sending user data:", userData);
+      
       return apiRequest("/api/admin/users", {
         method: "POST",
         headers: {
+          "Content-Type": "application/json",
           "X-Admin-Pin": "0000"
         },
         body: JSON.stringify(userData),
@@ -61,6 +65,7 @@ export function AdminPage() {
       });
     },
     onError: (error: any) => {
+      console.error("Create user error:", error);
       toast({
         title: "Error",
         description: error.message || "Failed to create user",
@@ -331,10 +336,22 @@ export function AdminPage() {
                     </Button>
                     <Button
                       onClick={() => {
+                        console.log("=== CREATE BUTTON CLICKED ===");
+                        console.log("newUserPin:", newUserPin);
+                        console.log("newUserName:", newUserName);
+                        
                         if (newUserPin.length === 4) {
-                          createUserMutation.mutate({
+                          const userData = {
                             pin: newUserPin,
-                            displayName: newUserName || undefined
+                            displayName: newUserName.trim() || undefined
+                          };
+                          console.log("Calling mutation with:", userData);
+                          createUserMutation.mutate(userData);
+                        } else {
+                          toast({
+                            title: "Error",
+                            description: "Please enter a complete 4-digit PIN",
+                            variant: "destructive",
                           });
                         }
                       }}

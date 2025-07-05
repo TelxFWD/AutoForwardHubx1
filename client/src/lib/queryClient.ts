@@ -9,22 +9,51 @@ async function throwIfResNotOk(res: Response) {
 
 export async function apiRequest(
   url: string,
-  options?: RequestInit,
+  config: RequestInit = {}
 ): Promise<any> {
-  const token = localStorage.getItem("authToken");
-  
-  const res = await fetch(url, {
-    credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-      ...(token && { Authorization: `Bearer ${token}` }),
-      ...(options?.headers || {}),
-    },
-    ...options,
+  // Ensure Content-Type is set for requests with body
+  const headers: Record<string, string> = {
+    ...config.headers,
+  };
+
+  // Add Content-Type for requests with body
+  if (config.body && !headers["Content-Type"] && !headers["content-type"]) {
+    headers["Content-Type"] = "application/json";
+  }
+
+  console.log("=== API REQUEST ===");
+  console.log("URL:", url);
+  console.log("Method:", config.method || "GET");
+  console.log("Headers:", headers);
+  console.log("Body:", config.body);
+
+  const response = await fetch(url, {
+    ...config,
+    headers,
   });
 
-  await throwIfResNotOk(res);
-  return await res.json();
+  console.log("Response status:", response.status);
+  console.log("Response headers:", Object.fromEntries(response.headers.entries()));
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({
+      message: `HTTP ${response.status}: ${response.statusText}`,
+    }));
+
+    console.error("API request failed:", error);
+    throw new Error(error.message || "Request failed");
+  }
+
+  const contentType = response.headers.get("Content-Type");
+  if (contentType && contentType.includes("application/json")) {
+    const responseData = await response.json();
+    console.log("Response data:", responseData);
+    return responseData;
+  }
+
+  const responseText = await response.text();
+  console.log("Response text:", responseText);
+  return responseText;
 }
 
 type UnauthorizedBehavior = "returnNull" | "throw";

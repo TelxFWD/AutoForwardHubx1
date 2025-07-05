@@ -106,44 +106,92 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/admin/users", requireAdmin, async (req, res) => {
     try {
-      console.log("Received user data:", JSON.stringify(req.body, null, 2));
+      console.log("=== CREATE USER REQUEST ===");
+      console.log("Content-Type:", req.headers['content-type']);
+      console.log("Raw body:", req.body);
+      console.log("Body type:", typeof req.body);
+      console.log("Body keys:", Object.keys(req.body || {}));
+      console.log("PIN value:", req.body?.pin, "type:", typeof req.body?.pin);
+      console.log("DisplayName value:", req.body?.displayName, "type:", typeof req.body?.displayName);
       
-      // Check if request body is empty
+      // Check if request body is empty or invalid
       if (!req.body || Object.keys(req.body).length === 0) {
+        console.log("❌ Empty request body detected");
         return res.status(400).json({ 
-          message: "Request body is required",
-          errors: [{ code: "invalid_type", message: "PIN and display name are required", path: ["pin"] }]
+          success: false,
+          message: "Request body is required. Please provide PIN and display name.",
+          errors: [{ 
+            code: "missing_body", 
+            message: "Request body cannot be empty", 
+            path: ["body"] 
+          }]
         });
       }
 
-      // Validate required fields before schema parsing
+      // Validate PIN field specifically
       if (!req.body.pin) {
+        console.log("❌ Missing PIN field");
         return res.status(400).json({ 
-          message: "PIN is required",
-          errors: [{ code: "invalid_type", message: "PIN must be exactly 4 digits", path: ["pin"] }]
+          success: false,
+          message: "PIN is required and must be exactly 4 digits",
+          errors: [{ 
+            code: "missing_pin", 
+            message: "PIN field is required", 
+            path: ["pin"] 
+          }]
         });
       }
 
+      // Validate PIN format
+      if (typeof req.body.pin !== 'string' || !/^\d{4}$/.test(req.body.pin)) {
+        console.log("❌ Invalid PIN format:", req.body.pin);
+        return res.status(400).json({ 
+          success: false,
+          message: "PIN must be exactly 4 digits",
+          errors: [{ 
+            code: "invalid_pin_format", 
+            message: "PIN must be a 4-digit string", 
+            path: ["pin"] 
+          }]
+        });
+      }
+
+      console.log("✅ Basic validation passed, parsing with schema");
       const userData = createUserSchema.parse(req.body);
+      console.log("✅ Schema validation passed:", userData);
+      
       const user = await authStorage.createUser(userData);
+      console.log("✅ User created successfully:", { id: user.id, pin: user.pin, displayName: user.displayName });
       
       res.status(201).json({
-        id: user.id,
-        pin: user.pin,
-        displayName: user.displayName,
-        createdAt: user.createdAt
+        success: true,
+        user: {
+          id: user.id,
+          pin: user.pin,
+          displayName: user.displayName,
+          createdAt: user.createdAt
+        }
       });
     } catch (error) {
-      console.log("User creation error:", error);
+      console.log("❌ User creation error:", error);
       if (error instanceof z.ZodError) {
-        console.log("Validation errors:", error.errors);
+        console.log("❌ Zod validation errors:", error.errors);
         res.status(400).json({ 
-          message: "Invalid user data. PIN must be exactly 4 digits.", 
-          errors: error.errors 
+          success: false,
+          message: "Invalid user data provided", 
+          errors: error.errors.map(err => ({
+            code: err.code,
+            message: err.message,
+            path: err.path
+          }))
         });
       } else {
         const message = error instanceof Error ? error.message : "Failed to create user";
-        res.status(500).json({ message });
+        console.log("❌ Server error:", message);
+        res.status(500).json({ 
+          success: false, 
+          message: `Server error: ${message}` 
+        });
       }
     }
   });

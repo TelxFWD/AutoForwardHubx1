@@ -1,124 +1,88 @@
-
 import React, { useState, useRef, useEffect } from 'react';
+import { Input } from './input';
 import { cn } from '@/lib/utils';
 
 interface PinInputProps {
-  length?: number;
-  value?: string;
-  onChange?: (value: string) => void;
-  onComplete?: (value: string) => void;
+  length: number;
+  onComplete: (pin: string) => void;
   className?: string;
-  placeholder?: string;
-  disabled?: boolean;
 }
 
-export const PinInput = React.forwardRef<HTMLDivElement, PinInputProps>(
-  ({ length = 4, value = '', onChange, onComplete, className, placeholder = '○', disabled }, ref) => {
-    const [pins, setPins] = useState<string[]>(Array(length).fill(''));
-    const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+export function PinInput({ length, onComplete, className }: PinInputProps) {
+  const [pins, setPins] = useState<string[]>(Array(length).fill(''));
+  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-    useEffect(() => {
-      if (value) {
-        const valueArray = value.split('').slice(0, length);
-        const newPins = Array(length).fill('').map((_, i) => valueArray[i] || '');
-        setPins(newPins);
+  const resetPins = () => {
+    setPins(Array(length).fill(''));
+    inputRefs.current[0]?.focus();
+  };
+
+  useEffect(() => {
+    resetPins();
+  }, [length]);
+
+  const handleChange = (index: number, value: string) => {
+    // Only allow digits
+    if (value && !/^\d$/.test(value)) return;
+
+    const newPins = [...pins];
+    newPins[index] = value;
+    setPins(newPins);
+
+    // Move to next input if value is entered
+    if (value && index < length - 1) {
+      inputRefs.current[index + 1]?.focus();
+    }
+
+    // Check if all pins are filled
+    if (newPins.every(pin => pin !== '')) {
+      const completedPin = newPins.join('');
+      console.log('PIN completed:', completedPin);
+      onComplete(completedPin);
+    }
+  };
+
+  const handleKeyDown = (index: number, e: React.KeyboardEvent) => {
+    if (e.key === 'Backspace' && !pins[index] && index > 0) {
+      inputRefs.current[index - 1]?.focus();
+    }
+  };
+
+  const handlePaste = (e: React.ClipboardEvent) => {
+    e.preventDefault();
+    const pasteData = e.clipboardData.getData('text');
+
+    if (/^\d+$/.test(pasteData) && pasteData.length <= length) {
+      const newPins = Array(length).fill('');
+      for (let i = 0; i < pasteData.length; i++) {
+        newPins[i] = pasteData[i];
       }
-    }, [value, length]);
-
-    const handleChange = (index: number, inputValue: string) => {
-      if (disabled) return;
-      
-      // Only allow numbers
-      if (inputValue && !/^\d$/.test(inputValue)) return;
-
-      const newPins = [...pins];
-      newPins[index] = inputValue;
       setPins(newPins);
 
-      const newValue = newPins.join('');
-      onChange?.(newValue);
-
-      // Auto-focus next input
-      if (inputValue && index < length - 1) {
-        inputRefs.current[index + 1]?.focus();
+      if (pasteData.length === length) {
+        const completedPin = pasteData;
+        console.log('PIN pasted and completed:', completedPin);
+        onComplete(completedPin);
       }
+    }
+  };
 
-      // Call onComplete when all pins are filled
-      if (newValue.length === length) {
-        onComplete?.(newValue);
-      }
-    };
-
-    const handleKeyDown = (index: number, e: React.KeyboardEvent) => {
-      if (disabled) return;
-
-      if (e.key === 'Backspace' && !pins[index] && index > 0) {
-        inputRefs.current[index - 1]?.focus();
-      }
-    };
-
-    const handlePaste = (e: React.ClipboardEvent) => {
-      if (disabled) return;
-      
-      e.preventDefault();
-      const pasteData = e.clipboardData.getData('text');
-      const numbers = pasteData.replace(/\D/g, '').slice(0, length);
-      
-      if (numbers) {
-        const newPins = Array(length).fill('').map((_, i) => numbers[i] || '');
-        setPins(newPins);
-        
-        const newValue = newPins.join('');
-        onChange?.(newValue);
-        
-        if (newValue.length === length) {
-          onComplete?.(newValue);
-        }
-      }
-    };
-
-    const reset = () => {
-      setPins(Array(length).fill(''));
-      onChange?.('');
-      inputRefs.current[0]?.focus();
-    };
-
-    // Expose reset function via ref
-    React.useImperativeHandle(ref, () => ({
-      reset,
-    }));
-
-    return (
-      <div
-        ref={ref}
-        className={cn('flex gap-2', className)}
-        onPaste={handlePaste}
-      >
-        {pins.map((pin, index) => (
-          <input
-            key={index}
-            ref={(el) => {
-              inputRefs.current[index] = el;
-            }}
-            type="text"
-            inputMode="numeric"
-            maxLength={1}
-            value={pin}
-            onChange={(e) => handleChange(index, e.target.value)}
-            onKeyDown={(e) => handleKeyDown(index, e)}
-            disabled={disabled}
-            className={cn(
-              'w-12 h-12 text-center text-lg font-semibold border rounded-md',
-              'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent',
-              'disabled:opacity-50 disabled:cursor-not-allowed',
-              pin ? 'border-blue-500' : 'border-gray-300'
-            )}
-            placeholder={placeholder}
-          />
-        ))}
-      </div>
-    );
-  }
-);
-
-PinInput.displayName = 'PinInput';
+  return (
+    <div className={cn("flex gap-2", className)}>
+      {Array.from({ length }, (_, index) => (
+        <Input
+          key={index}
+          ref={(el) => inputRefs.current[index] = el}
+          type="text"
+          inputMode="numeric"
+          maxLength={1}
+          value={pins[index]}
+          onChange={(e) => handleChange(index, e.target.value)}
+          onKeyDown={(e) => handleKeyDown(index, e)}
+          onPaste={handlePaste}
+          className="w-12 h-12 text-center text-lg font-semibold"
+        />
+      ))}
+    </div>
+  );
+}
