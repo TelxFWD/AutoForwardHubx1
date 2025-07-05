@@ -40,20 +40,12 @@ export function AdminPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: users, isLoading } = useQuery({
-    queryKey: ["/api/admin/users"],
-    queryFn: () => apiRequest("/api/admin/users", {
-      headers: { "x-admin-pin": ADMIN_PIN }
-    }),
-    enabled: isAuthenticated,
-  });
-
   const createUserMutation = useMutation({
-    mutationFn: async (userData: { pin: string; displayName: string }) => {
+    mutationFn: async (userData: { pin: string; displayName?: string }) => {
       return apiRequest("/api/admin/users", {
         method: "POST",
         headers: {
-          "x-admin-pin": ADMIN_PIN,
+          "X-Admin-Pin": "0000"
         },
         body: JSON.stringify(userData),
       });
@@ -76,6 +68,16 @@ export function AdminPage() {
       });
     },
   });
+
+  const { data: users, isLoading } = useQuery({
+    queryKey: ["/api/admin/users"],
+    queryFn: () => apiRequest("/api/admin/users", {
+      headers: { "x-admin-pin": ADMIN_PIN }
+    }),
+    enabled: isAuthenticated,
+  });
+
+  
 
   const deleteUserMutation = useMutation({
     mutationFn: async (userId: number) => {
@@ -125,13 +127,13 @@ export function AdminPage() {
     console.log("PIN length:", newUserPin?.length);
     console.log("Name length:", newUserName?.length);
     console.log("Form state:", { pin: newUserPin, displayName: newUserName });
-    
+
     // For debugging, let's try with hardcoded values first
     const testPin = newUserPin || "5599";
     const testName = newUserName || "Test User";
-    
+
     console.log("Using values:", { pin: testPin, displayName: testName });
-    
+
     createUserMutation.mutate({
       pin: testPin,
       displayName: testName,
@@ -164,7 +166,7 @@ export function AdminPage() {
                 onComplete={handleAdminAuth}
                 key={adminPin}
               />
-              
+
               <div className="text-center text-sm text-muted-foreground">
                 <p>Admin PIN required for access</p>
                 <Badge variant="secondary" className="mt-2">Restricted Area</Badge>
@@ -207,7 +209,7 @@ export function AdminPage() {
               </p>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Active Sessions</CardTitle>
@@ -222,7 +224,7 @@ export function AdminPage() {
               </p>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">System Status</CardTitle>
@@ -267,7 +269,7 @@ export function AdminPage() {
                       Create a new user account with a 4-digit PIN
                     </DialogDescription>
                   </DialogHeader>
-                  
+
                   <div className="space-y-4">
                     <div>
                       <Label htmlFor="displayName">Display Name</Label>
@@ -275,30 +277,33 @@ export function AdminPage() {
                         id="displayName"
                         value={newUserName}
                         onChange={(e) => {
-                          console.log("Display name changed:", e.target.value);
                           setNewUserName(e.target.value);
                         }}
-                        placeholder="Enter user display name"
+                        placeholder="Optional display name"
                       />
                     </div>
-                    
+
                     <div>
                       <Label>4-Digit PIN</Label>
                       <div className="mt-2">
                         <PinInput
-                          key={showCreateDialog ? "active" : "inactive"}
                           length={4}
-                          onComplete={(pin) => {
-                            console.log("PIN completed:", pin);
-                            setNewUserPin(pin);
-                          }}
+                          onComplete={(pin) => setNewUserPin(pin)}
+                          onChange={(pin) => setNewUserPin(pin)}
+                          key={`pin-input-${newUserPin}`}
                         />
                       </div>
+                      {newUserPin && newUserPin.length < 4 && (
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Enter {4 - newUserPin.length} more digit{4 - newUserPin.length !== 1 ? 's' : ''}
+                        </p>
+                      )}
                     </div>
                   </div>
-                  
+
                   <DialogFooter>
                     <Button
+                      type="button"
                       variant="outline"
                       onClick={() => {
                         setShowCreateDialog(false);
@@ -309,8 +314,15 @@ export function AdminPage() {
                       Cancel
                     </Button>
                     <Button
-                      onClick={handleCreateUser}
-                      disabled={createUserMutation.isPending}
+                      onClick={() => {
+                        if (newUserPin.length === 4) {
+                          createUserMutation.mutate({
+                            pin: newUserPin,
+                            displayName: newUserName || undefined
+                          });
+                        }
+                      }}
+                      disabled={newUserPin.length !== 4 || createUserMutation.isPending}
                     >
                       {createUserMutation.isPending && (
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -347,7 +359,7 @@ export function AdminPage() {
                         Created: {new Date(user.createdAt).toLocaleString()}
                       </p>
                     </div>
-                    
+
                     <Button
                       variant="destructive"
                       size="sm"
@@ -358,7 +370,7 @@ export function AdminPage() {
                     </Button>
                   </div>
                 ))}
-                
+
                 {users?.length === 0 && (
                   <div className="text-center py-8 text-muted-foreground">
                     No users found. Create your first user to get started.
