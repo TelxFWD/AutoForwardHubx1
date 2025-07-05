@@ -12,12 +12,19 @@ const PinInput = React.forwardRef<HTMLInputElement, PinInputProps>(
     const inputRefs = React.useRef<HTMLInputElement[]>([]);
 
     const handleChange = (index: number, value: string) => {
+      console.log("PIN handleChange called:", { index, value, test: /^\d*$/.test(value) });
+      
       // Only allow digits
-      if (!/^\d*$/.test(value)) return;
+      if (!/^\d*$/.test(value)) {
+        console.log("Value rejected - not digits:", value);
+        return;
+      }
 
       const newValues = [...values];
       newValues[index] = value.slice(-1); // Only take the last digit
       setValues(newValues);
+      
+      console.log("PIN values updated:", newValues);
 
       // Move to next input
       if (value && index < length - 1) {
@@ -26,7 +33,9 @@ const PinInput = React.forwardRef<HTMLInputElement, PinInputProps>(
 
       // Check if complete
       const pin = newValues.join("");
+      console.log("PIN check complete:", { pin, pinLength: pin.length, requiredLength: length });
       if (pin.length === length && onComplete) {
+        console.log("PIN complete! Calling onComplete with:", pin);
         onComplete(pin);
       }
     };
@@ -71,11 +80,11 @@ const PinInput = React.forwardRef<HTMLInputElement, PinInputProps>(
             onChange={(e) => handleChange(index, e.target.value)}
             onKeyDown={(e) => handleKeyDown(index, e)}
             onPaste={handlePaste}
+            maxLength={1}
             className={cn(
               "flex h-12 w-12 rounded-md border border-input bg-background px-3 py-2 text-center text-lg font-mono ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
               className
             )}
-            {...props}
           />
         ))}
       </div>

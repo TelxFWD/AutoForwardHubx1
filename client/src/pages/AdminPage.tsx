@@ -288,9 +288,10 @@ export function AdminPage() {
                       <div className="mt-2">
                         <PinInput
                           length={4}
-                          onComplete={(pin) => setNewUserPin(pin)}
-                          onChange={(pin) => setNewUserPin(pin)}
-                          key={`pin-input-${newUserPin}`}
+                          onComplete={(pin) => {
+                            console.log("PIN completed:", pin);
+                            setNewUserPin(pin);
+                          }}
                         />
                       </div>
                       {newUserPin && newUserPin.length < 4 && (
