@@ -26,21 +26,14 @@ export default function DiscordWebhookManager() {
   const [newBot, setNewBot] = useState({ name: "", token: "" });
   const [testWebhook, setTestWebhook] = useState("");
 
-  // Mock data for demonstration - replace with actual API calls
-  const discordBots: DiscordBot[] = [
-    {
-      id: 1,
-      name: "AutoForwardX Main Bot",
-      token: "MTIzNDU2Nzg5MDEyMzQ1Njc4OQ.GhIjKl.MnOpQrStUvWxYzAbCdEfGhIjKlMnOpQrSt",
-      status: 'active',
-      lastPing: new Date().toISOString(),
-      guilds: 5
-    }
-  ];
+  // Fetch Discord bots from API
+  const { data: discordBots = [], isLoading: isLoadingBots } = useQuery<DiscordBot[]>({
+    queryKey: ["/api/discord/bots"],
+  });
 
   const addBotMutation = useMutation({
     mutationFn: (data: { name: string; token: string }) =>
-      apiRequest("/api/discord/bots", { method: "POST", body: JSON.stringify(data) }),
+      apiRequest("/api/discord/bots", { method: "POST", body: JSON.stringify({ ...data, userId: 1 }) }),
     onSuccess: () => {
       toast({
         title: "Bot Added",
@@ -103,6 +96,13 @@ export default function DiscordWebhookManager() {
         description: "Discord bot has been removed successfully",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/discord/bots"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to remove Discord bot",
+        variant: "destructive",
+      });
     },
   });
 
@@ -196,7 +196,11 @@ export default function DiscordWebhookManager() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {discordBots.length === 0 ? (
+          {isLoadingBots ? (
+            <div className="text-center py-8 text-muted-foreground">
+              Loading Discord bots...
+            </div>
+          ) : discordBots.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               No Discord bots configured. Add one above to get started.
             </div>
