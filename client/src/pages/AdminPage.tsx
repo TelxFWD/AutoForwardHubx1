@@ -121,22 +121,27 @@ export function AdminPage() {
   };
 
   const handleCreateUser = () => {
-    console.log("=== CREATE USER DEBUG ===");
-    console.log("newUserPin:", JSON.stringify(newUserPin));
-    console.log("newUserName:", JSON.stringify(newUserName));
-    console.log("PIN length:", newUserPin?.length);
-    console.log("Name length:", newUserName?.length);
-    console.log("Form state:", { pin: newUserPin, displayName: newUserName });
+    if (!newUserPin || newUserPin.length !== 4) {
+      toast({
+        title: "Error",
+        description: "Please enter a 4-digit PIN",
+        variant: "destructive",
+      });
+      return;
+    }
 
-    // For debugging, let's try with hardcoded values first
-    const testPin = newUserPin || "5599";
-    const testName = newUserName || "Test User";
-
-    console.log("Using values:", { pin: testPin, displayName: testName });
+    if (!newUserName.trim()) {
+      toast({
+        title: "Error", 
+        description: "Please enter a display name",
+        variant: "destructive",
+      });
+      return;
+    }
 
     createUserMutation.mutate({
-      pin: testPin,
-      displayName: testName,
+      pin: newUserPin,
+      displayName: newUserName.trim(),
     });
   };
 

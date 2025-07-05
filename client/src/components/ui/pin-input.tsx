@@ -1,46 +1,39 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 
-interface PinInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+interface PinInputProps {
   length?: number;
   onComplete?: (pin: string) => void;
+  className?: string;
 }
 
 const PinInput = React.forwardRef<HTMLInputElement, PinInputProps>(
-  ({ className, length = 4, onComplete, ...props }, ref) => {
-    const [values, setValues] = React.useState<string[]>(new Array(length).fill(""));
-    const inputRefs = React.useRef<HTMLInputElement[]>([]);
+  ({ className, length = 4, onComplete }, ref) => {
+    const [values, setValues] = React.useState<string[]>(Array(length).fill(""));
+    const inputRefs = React.useRef<(HTMLInputElement | null)[]>([]);
 
     const handleChange = (index: number, value: string) => {
-      console.log("PIN handleChange called:", { index, value, test: /^\d*$/.test(value) });
-      
-      // Only allow digits
-      if (!/^\d*$/.test(value)) {
-        console.log("Value rejected - not digits:", value);
-        return;
-      }
+      // Only allow single digits
+      if (value && !/^\d$/.test(value)) return;
 
       const newValues = [...values];
-      newValues[index] = value.slice(-1); // Only take the last digit
+      newValues[index] = value;
       setValues(newValues);
-      
-      console.log("PIN values updated:", newValues);
 
-      // Move to next input
+      // Move to next input if value entered
       if (value && index < length - 1) {
         inputRefs.current[index + 1]?.focus();
       }
 
-      // Check if complete
+      // Call onComplete when all inputs are filled
       const pin = newValues.join("");
-      console.log("PIN check complete:", { pin, pinLength: pin.length, requiredLength: length });
       if (pin.length === length && onComplete) {
-        console.log("PIN complete! Calling onComplete with:", pin);
         onComplete(pin);
       }
     };
 
     const handleKeyDown = (index: number, e: React.KeyboardEvent) => {
+      // Move to previous input on backspace if current is empty
       if (e.key === "Backspace" && !values[index] && index > 0) {
         inputRefs.current[index - 1]?.focus();
       }
@@ -51,12 +44,17 @@ const PinInput = React.forwardRef<HTMLInputElement, PinInputProps>(
       const paste = e.clipboardData.getData("text");
       const digits = paste.replace(/\D/g, "").slice(0, length);
       
-      const newValues = new Array(length).fill("");
+      const newValues = Array(length).fill("");
       for (let i = 0; i < digits.length; i++) {
         newValues[i] = digits[i];
       }
       setValues(newValues);
       
+      // Focus appropriate input
+      const nextIndex = Math.min(digits.length, length - 1);
+      inputRefs.current[nextIndex]?.focus();
+      
+      // Call onComplete if all filled
       if (digits.length === length && onComplete) {
         onComplete(digits);
       }
@@ -68,21 +66,22 @@ const PinInput = React.forwardRef<HTMLInputElement, PinInputProps>(
           <input
             key={index}
             ref={(el) => {
-              if (el) inputRefs.current[index] = el;
-              if (index === 0) {
+              inputRefs.current[index] = el;
+              if (index === 0 && ref) {
                 if (typeof ref === "function") ref(el);
-                else if (ref) ref.current = el;
+                else ref.current = el;
               }
             }}
             type="text"
             inputMode="numeric"
+            pattern="\d"
+            maxLength={1}
             value={value}
             onChange={(e) => handleChange(index, e.target.value)}
             onKeyDown={(e) => handleKeyDown(index, e)}
             onPaste={handlePaste}
-            maxLength={1}
             className={cn(
-              "flex h-12 w-12 rounded-md border border-input bg-background px-3 py-2 text-center text-lg font-mono ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+              "h-12 w-12 rounded-md border border-input bg-background text-center text-lg font-mono focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
               className
             )}
           />
@@ -91,6 +90,7 @@ const PinInput = React.forwardRef<HTMLInputElement, PinInputProps>(
     );
   }
 );
+
 PinInput.displayName = "PinInput";
 
 export { PinInput };
