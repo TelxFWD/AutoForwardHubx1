@@ -502,6 +502,8 @@ export class MemStorage implements IStorage {
       removeMentions: pair.removeMentions ?? null,
       headerPatterns: pair.headerPatterns ?? null,
       footerPatterns: pair.footerPatterns ?? null,
+      telegramBotId: pair.telegramBotId ?? null,
+      discordBotId: pair.discordBotId ?? null,
     };
     this.pairs.set(newPair.id, newPair);
     return newPair;
@@ -722,6 +724,7 @@ export class MemStorage implements IStorage {
     const newBot: DiscordBot = {
       ...bot,
       id: this.nextDiscordBotId++,
+      status: bot.status || "active",
       guilds: 0,
       lastPing: null,
       createdAt: new Date(),
@@ -765,6 +768,8 @@ export class MemStorage implements IStorage {
     const newBot: TelegramBot = {
       ...bot,
       id,
+      status: bot.status || "active",
+      isDefault: bot.isDefault ?? null,
       username: null,
       lastValidated: null,
       createdAt: new Date(),
