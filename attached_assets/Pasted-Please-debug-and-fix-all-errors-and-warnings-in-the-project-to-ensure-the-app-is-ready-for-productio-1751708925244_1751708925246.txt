@@ -1,0 +1,90 @@
+Please debug and fix all errors and warnings in the project to ensure the app is ready for production.
+
+📌 Core Fixes Required:
+Zod Validation Error:
+
+The POST request to /api/admin/users is missing required fields, specifically the pin field.
+
+Ensure that the request body parser (express.json() and express.urlencoded({ extended: true })) is correctly configured and that the frontend or API call correctly sends the pin and all required fields in the body.
+
+Improve error handling to provide clearer feedback if fields are missing.
+
+Example schema:
+
+typescript
+Copy
+Edit
+const userSchema = z.object({
+  pin: z.string().min(4).max(4), // must be exactly 4 digits
+  displayName: z.string().min(1)
+});
+Ensure Proper Request Data:
+
+Validate that the form or API correctly sends the JSON payload with the Content-Type: application/json header.
+
+Example:
+
+json
+Copy
+Edit
+{ "pin": "1234", "displayName": "Admin" }
+Missing Environment Variables:
+
+Add TELEGRAM_API_ID and TELEGRAM_API_HASH to your .env file.
+
+If these are optional for now, update your dotenv load logic to handle missing variables gracefully or log a warning without stopping the app.
+
+Browserslist Warning:
+
+Run the following command to update caniuse-lite:
+
+bash
+Copy
+Edit
+npx update-browserslist-db@latest
+This is a non-breaking warning, but it’s recommended to clear it for a clean production build.
+
+User Creation Error Flow:
+
+Improve the user creation logic to:
+
+Return more user-friendly error messages.
+
+Prevent empty submissions.
+
+Properly handle missing or malformed request bodies.
+
+Example:
+
+typescript
+Copy
+Edit
+if (!req.body.pin) {
+  return res.status(400).json({ message: "PIN is required" });
+}
+Improve API Logging:
+
+Show incoming request bodies clearly for easier debugging.
+
+Log the success/failure of each operation with status codes.
+
+Session and Authentication Hardening:
+
+Make sure sessions and tokens are stored per user and that no session leakage is possible.
+
+Add session timeout and manual logout support.
+
+✔️ Deliverables:
+Fully functional user creation API.
+
+Fixed validation with clear error handling.
+
+Correct .env handling.
+
+Browserslist updated.
+
+Production-ready backend with stable request parsing.
+
+User-friendly error responses.
+
+Logging cleaned for production (remove unnecessary debug logs).
