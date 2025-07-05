@@ -474,8 +474,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       pythonProcess.on("close", async (code) => {
         try {
-          if (code === 0) {
-            const result = JSON.parse(output.trim());
+          if (code === 0 && output.trim()) {
+            // Clean the output - remove any extra whitespace or newlines
+            const cleanOutput = output.trim();
+            console.log("Clean Python output:", cleanOutput);
+            
+            let result;
+            try {
+              result = JSON.parse(cleanOutput);
+            } catch (jsonError) {
+              console.error("JSON parse error:", jsonError);
+              console.log("Raw output that failed to parse:", JSON.stringify(cleanOutput));
+              
+              // Try to extract JSON from the output if it's mixed with other text
+              const jsonMatch = cleanOutput.match(/\{[\s\S]*\}/);
+              if (jsonMatch) {
+                result = JSON.parse(jsonMatch[0]);
+              } else {
+                throw jsonError;
+              }
+            }
             
             // Store OTP session data if OTP was sent successfully
             if (result.status === "otp_sent" && result.phone_code_hash) {
@@ -484,12 +502,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
             
             // Log activity
-            await storage.createActivity({
-              type: "otp_request",
-              message: `OTP requested for ${actualPhone}`,
-              details: `Session: ${actualSessionName} - ${result.message}`,
-              severity: result.status === "otp_sent" ? "success" : "info",
-            });
+            try {
+              await storage.createActivity({
+                type: "otp_request",
+                message: `OTP requested for ${actualPhone}`,
+                details: `Session: ${actualSessionName} - ${result.message}`,
+                severity: result.status === "otp_sent" ? "success" : "info",
+              });
+            } catch (activityError) {
+              console.warn("Failed to log activity:", activityError);
+            }
             
             res.json({
               message: "OTP sent successfully",
@@ -503,17 +525,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
               "Phone number is invalid or banned" : 
               "Failed to send OTP";
             
-            await storage.createActivity({
-              type: "otp_request",
-              message: `OTP request failed for ${phoneNumber}`,
-              details: errorMsg,
-              severity: "error",
-            });
+            try {
+              await storage.createActivity({
+                type: "otp_request",
+                message: `OTP request failed for ${actualPhone}`,
+                details: errorMsg,
+                severity: "error",
+              });
+            } catch (activityError) {
+              console.warn("Failed to log activity:", activityError);
+            }
             
             res.status(400).json({ message: errorMsg });
           }
         } catch (parseError) {
-          console.error("Failed to parse Python output:", output, errorOutput);
+          console.error("Failed to parse Python output:", parseError);
+          console.log("Raw output:", output);
+          console.log("Error output:", errorOutput);
           res.status(500).json({ message: "Failed to process OTP request" });
         }
       });

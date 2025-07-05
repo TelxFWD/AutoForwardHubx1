@@ -126,10 +126,15 @@ export class DatabaseStorage implements IStorage {
 
   async getAllSessions(userId?: number): Promise<Session[]> {
     if (!db) throw new Error("Database not available");
-    if (userId) {
-      return await db.select().from(sessions).where(eq(sessions.userId, userId));
+    try {
+      if (userId) {
+        return await db.select().from(sessions).where(eq(sessions.userId, userId));
+      }
+      return await db.select().from(sessions);
+    } catch (error) {
+      console.error("Error getting sessions:", error);
+      return [];
     }
-    return await db.select().from(sessions);
   }
 
   async getSession(id: number): Promise<Session | undefined> {
@@ -140,8 +145,13 @@ export class DatabaseStorage implements IStorage {
 
   async getSessionByName(name: string): Promise<Session | undefined> {
     if (!db) throw new Error("Database not available");
-    const [session] = await db.select().from(sessions).where(eq(sessions.name, name));
-    return session || undefined;
+    try {
+      const [session] = await db.select().from(sessions).where(eq(sessions.name, name));
+      return session || undefined;
+    } catch (error) {
+      console.error("Error in getSessionByName:", error);
+      return undefined;
+    }
   }
 
   async createSession(session: InsertSession): Promise<Session> {
@@ -168,7 +178,12 @@ export class DatabaseStorage implements IStorage {
 
   async getAllBlocklists(): Promise<Blocklist[]> {
     if (!db) throw new Error("Database not available");
-    return await db.select().from(blocklists);
+    try {
+      return await db.select().from(blocklists);
+    } catch (error) {
+      console.error("Error getting blocklists:", error);
+      return [];
+    }
   }
 
   async getBlocklistsByType(type: string): Promise<Blocklist[]> {
@@ -200,11 +215,16 @@ export class DatabaseStorage implements IStorage {
 
   async getRecentActivities(limit = 50): Promise<Activity[]> {
     if (!db) throw new Error("Database not available");
-    return await db
-      .select()
-      .from(activities)
-      .orderBy(desc(activities.createdAt))
-      .limit(limit);
+    try {
+      return await db
+        .select()
+        .from(activities)
+        .orderBy(desc(activities.createdAt))
+        .limit(limit);
+    } catch (error) {
+      console.error("Error getting recent activities:", error);
+      return [];
+    }
   }
 
   async createActivity(activity: InsertActivity): Promise<Activity> {
@@ -221,8 +241,13 @@ export class DatabaseStorage implements IStorage {
 
   async getSystemStats(): Promise<SystemStats | undefined> {
     if (!db) throw new Error("Database not available");
-    const [stats] = await db.select().from(systemStats).limit(1);
-    return stats || undefined;
+    try {
+      const [stats] = await db.select().from(systemStats).limit(1);
+      return stats || undefined;
+    } catch (error) {
+      console.error("Error getting system stats:", error);
+      return undefined;
+    }
   }
 
   async updateSystemStats(stats: Partial<SystemStats>): Promise<SystemStats> {
