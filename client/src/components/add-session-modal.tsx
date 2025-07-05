@@ -105,6 +105,27 @@ export default function AddSessionModal({ isOpen, onClose }: AddSessionModalProp
     verifyOtpMutation.mutate({ phoneNumber, otp: otpCode.trim() });
   };
 
+  const handleResendOtp = () => {
+    if (!phoneNumber) {
+      toast({
+        title: "Error",
+        description: "Phone number not found",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Reset OTP code input
+    setOtpCode("");
+    
+    // Request new OTP using the same session data
+    requestOtpMutation.mutate({
+      sessionName: sessionName,
+      phoneNumber: phoneNumber,
+      sessionFileName: sessionName,
+    });
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -225,17 +246,29 @@ export default function AddSessionModal({ isOpen, onClose }: AddSessionModalProp
               />
             </div>
             
-            <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
-              <Button type="button" variant="outline" onClick={() => setStep('form')}>
-                Back
-              </Button>
+            <div className="flex justify-between items-center pt-4 border-t border-gray-200">
               <Button 
-                onClick={handleVerifyOtp}
-                disabled={verifyOtpMutation.isPending || !otpCode.trim()}
-                className="bg-primary text-white hover:bg-blue-700"
+                type="button" 
+                variant="ghost" 
+                onClick={handleResendOtp}
+                disabled={requestOtpMutation.isPending}
+                className="text-blue-600 hover:text-blue-700"
               >
-                {verifyOtpMutation.isPending ? "Verifying..." : "Verify OTP"}
+                {requestOtpMutation.isPending ? "Resending..." : "Resend OTP"}
               </Button>
+              
+              <div className="flex space-x-3">
+                <Button type="button" variant="outline" onClick={() => setStep('form')}>
+                  Back
+                </Button>
+                <Button 
+                  onClick={handleVerifyOtp}
+                  disabled={verifyOtpMutation.isPending || !otpCode.trim()}
+                  className="bg-primary text-white hover:bg-blue-700"
+                >
+                  {verifyOtpMutation.isPending ? "Verifying..." : "Verify OTP"}
+                </Button>
+              </div>
             </div>
           </div>
         );

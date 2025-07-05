@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { authStorage } from "./auth-storage";
+import { otpStorage } from "./otp-storage";
 import { insertPairSchema, insertSessionSchema, insertBlocklistSchema, insertActivitySchema, pinLoginSchema, createUserSchema } from "@shared/schema";
 import { z } from "zod";
 import { body, validationResult } from "express-validator";
@@ -382,6 +383,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (code === 0) {
             const result = JSON.parse(output.trim());
             
+            // Store OTP session data if OTP was sent successfully
+            if (result.status === "otp_sent" && result.phone_code_hash) {
+              otpStorage.storeOTPSession(phoneNumber, sessionName, result.phone_code_hash);
+              console.log(`Stored OTP session for ${phoneNumber} with hash: ${result.phone_code_hash.substring(0, 10)}...`);
+            }
+            
             // Log activity
             await storage.createActivity({
               type: "otp_request",
@@ -431,13 +438,91 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "phoneNumber and otp are required" });
       }
       
-      // Use Python subprocess to handle OTP verification
+      // Retrieve OTP session data
+      const otpSession = otpStorage.getOTPSession(phoneNumber);
+      if (!otpSession) {
+        return res.status(400).json({ 
+          message: "OTP session not found or expired. Please request a new OTP." 
+        });
+      }
+      
+      console.log(`Retrieved OTP session for ${phoneNumber}: ${otpSession.sessionName}, hash: ${otpSession.phoneCodeHash.substring(0, 10)}...`);
+      
+      // Create temporary script file to pass sensitive data
+      const { writeFile, unlink } = await import("fs/promises");
+      const tempScriptPath = `temp_verify_${Date.now()}.py`;
+      
+      const pythonScript = `
+import asyncio
+import sys
+import json
+from pathlib import Path
+from telethon import TelegramClient
+from telethon.errors import SessionPasswordNeededError, PhoneCodeInvalidError
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+async def verify_otp():
+    api_id = int(os.getenv("TELEGRAM_API_ID", "0"))
+    api_hash = os.getenv("TELEGRAM_API_HASH", "")
+    
+    phone = "${phoneNumber}"
+    otp_code = "${otp}"
+    session_name = "${otpSession.sessionName}"
+    phone_code_hash = "${otpSession.phoneCodeHash}"
+    
+    sessions_dir = Path("sessions")
+    sessions_dir.mkdir(exist_ok=True)
+    session_file = sessions_dir / f"{session_name}.session"
+    
+    try:
+        client = TelegramClient(str(session_file), api_id, api_hash)
+        await client.connect()
+        
+        # Verify OTP using stored phone_code_hash
+        await client.sign_in(
+            phone=phone,
+            code=otp_code,
+            phone_code_hash=phone_code_hash
+        )
+        
+        if await client.is_user_authorized():
+            user = await client.get_me()
+            await client.disconnect()
+            
+            result = {
+                "status": "success",
+                "message": f"OTP verified successfully for {user.first_name}",
+                "session_name": session_name,
+                "user_info": {
+                    "id": user.id,
+                    "first_name": user.first_name,
+                    "username": user.username
+                }
+            }
+            print(json.dumps(result))
+        else:
+            await client.disconnect()
+            print(json.dumps({"status": "error", "message": "OTP verification failed"}))
+            
+    except PhoneCodeInvalidError:
+        print(json.dumps({"status": "error", "message": "Invalid OTP code. Please try again."}))
+    except SessionPasswordNeededError:
+        print(json.dumps({"status": "error", "message": "Two-step verification enabled. Please disable it temporarily."}))
+    except Exception as e:
+        print(json.dumps({"status": "error", "message": f"Error verifying OTP: {str(e)}"}))
+
+if __name__ == "__main__":
+    asyncio.run(verify_otp())
+`;
+
+      await writeFile(tempScriptPath, pythonScript);
+      
+      // Execute the script
       const { spawn } = await import("child_process");
-      const pythonProcess = spawn("python", [
-        "telegram_copier/session_loader.py",
-        "--phone", phoneNumber,
-        "--otp", otp
-      ]);
+      const pythonProcess = spawn("python", [tempScriptPath]);
       
       let output = "";
       let errorOutput = "";
@@ -451,11 +536,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       pythonProcess.on("close", async (code) => {
+        // Clean up temporary script
+        try {
+          await unlink(tempScriptPath);
+        } catch (err) {
+          console.error("Failed to clean up temp script:", err);
+        }
+        
         try {
           if (code === 0) {
             const result = JSON.parse(output.trim());
             
             if (result.status === "success") {
+              // Remove OTP session after successful verification
+              otpStorage.removeOTPSession(phoneNumber);
+              
               // Create session in database
               const session = await storage.createSession({
                 name: result.session_name,
@@ -512,6 +607,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
     } catch (error) {
       console.error("OTP verification error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // OTP management endpoints
+  app.post("/api/sessions/resend-otp", async (req, res) => {
+    try {
+      const { phoneNumber } = req.body;
+      
+      if (!phoneNumber) {
+        return res.status(400).json({ message: "phoneNumber is required" });
+      }
+      
+      // Get existing session data if any
+      const existingSession = otpStorage.getOTPSession(phoneNumber);
+      const sessionName = existingSession?.sessionName || `user_${phoneNumber.replace(/[+\-\s]/g, '')}`;
+      
+      // Remove existing session to allow fresh request
+      otpStorage.removeOTPSession(phoneNumber);
+      
+      // Redirect to request-otp endpoint
+      req.body.sessionName = sessionName;
+      req.body.sessionFileName = sessionName;
+      
+      // Forward to request-otp
+      const requestOtpHandler = app._router.stack.find(layer => 
+        layer.route?.path === '/api/sessions/request-otp' && 
+        layer.route.methods.post
+      );
+      
+      if (requestOtpHandler) {
+        return requestOtpHandler.route.stack[0].handle(req, res);
+      }
+      
+      res.status(500).json({ message: "Failed to resend OTP" });
+      
+    } catch (error) {
+      console.error("Resend OTP error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get("/api/sessions/otp-status/:phoneNumber", async (req, res) => {
+    try {
+      const { phoneNumber } = req.params;
+      const session = otpStorage.getOTPSession(phoneNumber);
+      
+      if (!session) {
+        return res.json({ 
+          hasSession: false, 
+          message: "No active OTP session" 
+        });
+      }
+      
+      const timeRemaining = Math.max(0, session.expiresAt - Date.now());
+      
+      res.json({
+        hasSession: true,
+        sessionName: session.sessionName,
+        expiresIn: timeRemaining,
+        expiresAt: new Date(session.expiresAt).toISOString()
+      });
+      
+    } catch (error) {
+      console.error("OTP status error:", error);
       res.status(500).json({ message: "Internal server error" });
     }
   });

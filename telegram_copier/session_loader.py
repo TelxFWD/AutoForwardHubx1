@@ -73,7 +73,8 @@ class SessionLoader:
             return {
                 "status": "otp_sent",
                 "message": "OTP sent to your phone",
-                "session_name": session_name
+                "session_name": session_name,
+                "phone_code_hash": sent.phone_code_hash
             }
                 
         except PhoneNumberInvalidError:
