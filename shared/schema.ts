@@ -27,6 +27,8 @@ export const pairs = pgTable("pairs", {
   pairType: text("pair_type").notNull().default("telegram"), // telegram, discord
   sourceChannel: text("source_channel").notNull(),
   discordWebhook: text("discord_webhook"), // Optional for telegram pairs
+  discordChannelId: text("discord_channel_id"), // Discord channel ID for auto-webhook
+  autoWebhook: boolean("auto_webhook").default(false), // Auto-create webhook toggle
   destinationChannel: text("destination_channel").notNull(),
   botToken: text("bot_token"), // Optional for telegram pairs
   session: text("session").notNull(),
@@ -38,6 +40,18 @@ export const pairs = pgTable("pairs", {
   footerPatterns: text("footer_patterns").array(), // Array of patterns
   messageCount: integer("message_count").default(0),
   blockedCount: integer("blocked_count").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const discordBots = pgTable("discord_bots", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(), // Associated user
+  name: text("name").notNull(),
+  token: text("token").notNull(),
+  status: text("status").notNull().default("active"), // active, inactive, error
+  guilds: integer("guilds").default(0),
+  lastPing: timestamp("last_ping"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -150,8 +164,18 @@ export const insertDiscordPairSchema = createInsertSchema(pairs).omit({
   footerPatterns: true,
 }).extend({
   pairType: z.literal("discord"),
-  discordWebhook: z.string().url("Discord webhook must be a valid URL"),
+  discordWebhook: z.string().url("Discord webhook must be a valid URL").optional(),
+  discordChannelId: z.string().optional(),
+  autoWebhook: z.boolean().default(false),
   botToken: z.string().min(1, "Bot token is required for Discord pairs"),
+});
+
+export const insertDiscordBotSchema = createInsertSchema(discordBots).omit({
+  id: true,
+  guilds: true,
+  lastPing: true,
+  createdAt: true,
+  updatedAt: true,
 });
 
 export const insertSessionSchema = createInsertSchema(sessions).omit({
@@ -223,6 +247,9 @@ export type SystemStats = typeof systemStats.$inferSelect;
 
 export type OtpVerification = typeof otpVerification.$inferSelect;
 export type InsertOtpVerification = z.infer<typeof insertOtpVerificationSchema>;
+
+export type DiscordBot = typeof discordBots.$inferSelect;
+export type InsertDiscordBot = z.infer<typeof insertDiscordBotSchema>;
 
 export type PinLogin = z.infer<typeof pinLoginSchema>;
 export type CreateUser = z.infer<typeof createUserSchema>;

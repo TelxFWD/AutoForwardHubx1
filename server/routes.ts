@@ -3,7 +3,8 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { authStorage } from "./auth-storage";
 import { otpStorage } from "./otp-storage";
-import { insertPairSchema, insertTelegramPairSchema, insertDiscordPairSchema, insertSessionSchema, insertBlocklistSchema, insertActivitySchema, pinLoginSchema, createUserSchema, otpRequestSchema, otpVerifySchema } from "@shared/schema";
+import { DiscordService } from "./discord-service";
+import { insertPairSchema, insertTelegramPairSchema, insertDiscordPairSchema, insertSessionSchema, insertBlocklistSchema, insertActivitySchema, pinLoginSchema, createUserSchema, otpRequestSchema, otpVerifySchema, insertDiscordBotSchema } from "@shared/schema";
 // Enhanced OTP routes will be registered separately if needed
 import { z } from "zod";
 import { body, validationResult } from "express-validator";
@@ -38,6 +39,7 @@ function requireAdmin(req: any, res: any, next: any) {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  const discordService = new DiscordService(storage);
   // Authentication routes
   app.post("/api/auth/login", async (req, res) => {
     try {
@@ -2233,6 +2235,206 @@ if __name__ == "__main__":
         });
       }
     });
+
+  // Discord Bot Management Routes
+  app.get("/api/discord/bots", async (req, res) => {
+    try {
+      const userId = req.query.userId ? parseInt(req.query.userId as string) : undefined;
+      const bots = await storage.getAllDiscordBots(userId);
+      res.json(bots);
+    } catch (error) {
+      console.error("Error fetching Discord bots:", error);
+      res.status(500).json({ message: "Failed to fetch Discord bots" });
+    }
+  });
+
+  app.post("/api/discord/bots", async (req, res) => {
+    try {
+      const botData = insertDiscordBotSchema.parse(req.body);
+      
+      // Validate bot token
+      const validation = await discordService.validateBotToken(botData.token);
+      if (!validation.valid) {
+        return res.status(400).json({ message: validation.error });
+      }
+
+      // Get guild count
+      const guilds = await discordService.getBotGuilds(botData.token);
+      
+      const bot = await storage.createDiscordBot({
+        ...botData,
+        guilds: guilds.success ? guilds.guilds?.length || 0 : 0,
+        lastPing: new Date(),
+      });
+
+      res.json(bot);
+    } catch (error) {
+      console.error("Error creating Discord bot:", error);
+      res.status(500).json({ message: "Failed to create Discord bot" });
+    }
+  });
+
+  app.put("/api/discord/bots/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const updates = req.body;
+      
+      const bot = await storage.updateDiscordBot(id, updates);
+      if (!bot) {
+        return res.status(404).json({ message: "Discord bot not found" });
+      }
+      
+      res.json(bot);
+    } catch (error) {
+      console.error("Error updating Discord bot:", error);
+      res.status(500).json({ message: "Failed to update Discord bot" });
+    }
+  });
+
+  app.delete("/api/discord/bots/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const success = await storage.deleteDiscordBot(id);
+      
+      if (!success) {
+        return res.status(404).json({ message: "Discord bot not found" });
+      }
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting Discord bot:", error);
+      res.status(500).json({ message: "Failed to delete Discord bot" });
+    }
+  });
+
+  // Discord Webhook Automation Routes
+  app.post("/api/discord/webhooks/create", async (req, res) => {
+    try {
+      const { channelId, webhookName, botId } = req.body;
+      
+      if (!channelId || !botId) {
+        return res.status(400).json({ message: "channelId and botId are required" });
+      }
+
+      // Get bot from storage
+      const bot = await storage.getDiscordBot(botId);
+      if (!bot) {
+        return res.status(404).json({ message: "Discord bot not found" });
+      }
+
+      // Create webhook
+      const result = await discordService.createWebhook(
+        channelId,
+        webhookName || "AutoForwardX",
+        bot.token
+      );
+
+      if (!result.success) {
+        return res.status(400).json({ message: result.error });
+      }
+
+      res.json({ 
+        success: true, 
+        webhookUrl: result.webhookUrl,
+        channelId 
+      });
+    } catch (error) {
+      console.error("Error creating webhook:", error);
+      res.status(500).json({ message: "Failed to create webhook" });
+    }
+  });
+
+  app.post("/api/discord/webhooks/test", async (req, res) => {
+    try {
+      const { webhookUrl } = req.body;
+      
+      if (!webhookUrl) {
+        return res.status(400).json({ message: "webhookUrl is required" });
+      }
+
+      const result = await discordService.testWebhook(webhookUrl);
+      res.json(result);
+    } catch (error) {
+      console.error("Error testing webhook:", error);
+      res.status(500).json({ message: "Failed to test webhook" });
+    }
+  });
+
+  app.post("/api/discord/channels/:channelId/info", async (req, res) => {
+    try {
+      const { channelId } = req.params;
+      const { botId } = req.body;
+      
+      if (!botId) {
+        return res.status(400).json({ message: "botId is required" });
+      }
+
+      const bot = await storage.getDiscordBot(botId);
+      if (!bot) {
+        return res.status(404).json({ message: "Discord bot not found" });
+      }
+
+      const result = await discordService.getChannelInfo(channelId, bot.token);
+      res.json(result);
+    } catch (error) {
+      console.error("Error fetching channel info:", error);
+      res.status(500).json({ message: "Failed to fetch channel info" });
+    }
+  });
+
+  // Enhanced pair creation endpoint with auto-webhook support
+  app.post("/api/pairs/discord-auto", async (req, res) => {
+    try {
+      const pairData = req.body;
+      
+      if (pairData.autoWebhook) {
+        // Auto-create webhook
+        if (!pairData.discordChannelId || !pairData.discordBotId) {
+          return res.status(400).json({ 
+            message: "discordChannelId and discordBotId are required for auto-webhook" 
+          });
+        }
+
+        const bot = await storage.getDiscordBot(parseInt(pairData.discordBotId));
+        if (!bot) {
+          return res.status(404).json({ message: "Discord bot not found" });
+        }
+
+        const webhookResult = await discordService.createWebhook(
+          pairData.discordChannelId,
+          `AutoForwardX-${pairData.name}`,
+          bot.token
+        );
+
+        if (!webhookResult.success) {
+          return res.status(400).json({ 
+            message: `Failed to create webhook: ${webhookResult.error}` 
+          });
+        }
+
+        // Set the generated webhook URL
+        pairData.discordWebhook = webhookResult.webhookUrl;
+      }
+
+      // Create the pair
+      const validatedData = insertDiscordPairSchema.parse(pairData);
+      const pair = await storage.createPair(validatedData);
+
+      // Log activity
+      await storage.createActivity({
+        type: "pair_created",
+        message: `Created Discord pair: ${pair.name}`,
+        details: pairData.autoWebhook ? "Auto-webhook enabled" : "Manual webhook",
+        pairId: pair.id,
+        severity: "info"
+      });
+
+      res.json(pair);
+    } catch (error) {
+      console.error("Error creating Discord pair with auto-webhook:", error);
+      res.status(500).json({ message: "Failed to create pair" });
+    }
+  });
 
   const httpServer = createServer(app);
   return httpServer;

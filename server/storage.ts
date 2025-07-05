@@ -1,8 +1,9 @@
 import { 
-  users, pairs, sessions, blocklists, messageMappings, activities, systemStats, otpVerification,
+  users, pairs, sessions, blocklists, messageMappings, activities, systemStats, otpVerification, discordBots,
   type User, type InsertUser, type Pair, type InsertPair, type InsertTelegramPair, type InsertDiscordPair,
   type Session, type InsertSession, type Blocklist, type InsertBlocklist,
-  type Activity, type InsertActivity, type SystemStats, type OtpVerification, type InsertOtpVerification
+  type Activity, type InsertActivity, type SystemStats, type OtpVerification, type InsertOtpVerification,
+  type DiscordBot, type InsertDiscordBot
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, isNull, desc } from "drizzle-orm";
@@ -50,6 +51,13 @@ export interface IStorage {
   updateOtpVerification(phoneNumber: string, updates: Partial<OtpVerification>): Promise<OtpVerification | undefined>;
   deleteOtpVerification(phoneNumber: string): Promise<boolean>;
   cleanExpiredOtpVerifications(): Promise<void>;
+
+  // Discord Bots
+  getAllDiscordBots(userId?: number): Promise<DiscordBot[]>;
+  getDiscordBot(id: number): Promise<DiscordBot | undefined>;
+  createDiscordBot(bot: InsertDiscordBot): Promise<DiscordBot>;
+  updateDiscordBot(id: number, updates: Partial<DiscordBot>): Promise<DiscordBot | undefined>;
+  deleteDiscordBot(id: number): Promise<boolean>;
 }
 
 // Database storage implementation
@@ -281,6 +289,43 @@ export class DatabaseStorage implements IStorage {
       .delete(otpVerification)
       .where(eq(otpVerification.expiresAt, now));
   }
+
+  // Discord Bots
+  async getAllDiscordBots(userId?: number): Promise<DiscordBot[]> {
+    if (!db) throw new Error("Database not available");
+    if (userId) {
+      return await db.select().from(discordBots).where(eq(discordBots.userId, userId));
+    }
+    return await db.select().from(discordBots);
+  }
+
+  async getDiscordBot(id: number): Promise<DiscordBot | undefined> {
+    if (!db) throw new Error("Database not available");
+    const [bot] = await db.select().from(discordBots).where(eq(discordBots.id, id));
+    return bot || undefined;
+  }
+
+  async createDiscordBot(bot: InsertDiscordBot): Promise<DiscordBot> {
+    if (!db) throw new Error("Database not available");
+    const [created] = await db.insert(discordBots).values(bot).returning();
+    return created;
+  }
+
+  async updateDiscordBot(id: number, updates: Partial<DiscordBot>): Promise<DiscordBot | undefined> {
+    if (!db) throw new Error("Database not available");
+    const [updated] = await db
+      .update(discordBots)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(discordBots.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteDiscordBot(id: number): Promise<boolean> {
+    if (!db) throw new Error("Database not available");
+    const result = await db.delete(discordBots).where(eq(discordBots.id, id));
+    return (result.rowCount || 0) > 0;
+  }
 }
 
 // In-memory storage implementation
@@ -291,6 +336,7 @@ export class MemStorage implements IStorage {
   private blocklists = new Map<number, Blocklist>();
   private activities = new Map<number, Activity>();
   private otpVerifications = new Map<string, OtpVerification>();
+  private discordBots = new Map<number, DiscordBot>();
   private systemStats: SystemStats | undefined;
   private nextUserId = 1;
   private nextPairId = 1;
@@ -298,6 +344,7 @@ export class MemStorage implements IStorage {
   private nextBlocklistId = 1;
   private nextActivityId = 1;
   private nextOtpId = 1;
+  private nextDiscordBotId = 1;
 
   constructor() {
     this.initializeUsers();
@@ -383,6 +430,8 @@ export class MemStorage implements IStorage {
       enableAI: pair.enableAI || false,
       pairType: pair.pairType || "telegram",
       discordWebhook: pair.discordWebhook ?? null,
+      discordChannelId: pair.discordChannelId ?? null,
+      autoWebhook: pair.autoWebhook ?? false,
       botToken: pair.botToken ?? null,
       removeMentions: pair.removeMentions ?? null,
       headerPatterns: pair.headerPatterns ?? null,
@@ -588,6 +637,49 @@ export class MemStorage implements IStorage {
     expiredPhones.forEach(phoneNumber => {
       this.otpVerifications.delete(phoneNumber);
     });
+  }
+
+  // Discord Bot methods for MemStorage
+  async getAllDiscordBots(userId?: number): Promise<DiscordBot[]> {
+    const allBots = Array.from(this.discordBots.values());
+    if (userId) {
+      return allBots.filter(bot => bot.userId === userId);
+    }
+    return allBots;
+  }
+
+  async getDiscordBot(id: number): Promise<DiscordBot | undefined> {
+    return this.discordBots.get(id);
+  }
+
+  async createDiscordBot(bot: InsertDiscordBot): Promise<DiscordBot> {
+    const newBot: DiscordBot = {
+      ...bot,
+      id: this.nextDiscordBotId++,
+      guilds: 0,
+      lastPing: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    this.discordBots.set(newBot.id, newBot);
+    return newBot;
+  }
+
+  async updateDiscordBot(id: number, updates: Partial<DiscordBot>): Promise<DiscordBot | undefined> {
+    const existing = this.discordBots.get(id);
+    if (!existing) return undefined;
+    
+    const updated = { 
+      ...existing, 
+      ...updates, 
+      updatedAt: new Date() 
+    };
+    this.discordBots.set(id, updated);
+    return updated;
+  }
+
+  async deleteDiscordBot(id: number): Promise<boolean> {
+    return this.discordBots.delete(id);
   }
 }
 

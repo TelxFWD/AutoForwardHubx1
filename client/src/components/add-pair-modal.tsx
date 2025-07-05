@@ -6,11 +6,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import type { CheckedState } from "@radix-ui/react-checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { X } from "lucide-react";
-import type { Session, InsertPair } from "@shared/schema";
+import { X, Bot, Webhook } from "lucide-react";
+import type { Session, InsertPair, DiscordBot } from "@shared/schema";
 
 interface AddPairModalProps {
   isOpen: boolean;
@@ -23,6 +24,9 @@ export default function AddPairModal({ isOpen, onClose }: AddPairModalProps) {
     userId: 1, // Default user ID
     sourceChannel: "",
     discordWebhook: "",
+    discordChannelId: "",
+    discordBotId: "",
+    autoWebhook: false,
     destinationChannel: "",
     botToken: "",
     session: "",
@@ -37,14 +41,19 @@ export default function AddPairModal({ isOpen, onClose }: AddPairModalProps) {
     queryKey: ["/api/sessions"],
   });
 
+  const { data: discordBots } = useQuery<DiscordBot[]>({
+    queryKey: ["/api/discord/bots"],
+  });
+
   const createPairMutation = useMutation({
-    mutationFn: (data: InsertPair) => {
-      // Use Discord-specific endpoint since this is the Discord pair form
+    mutationFn: (data: any) => {
+      // Use auto-webhook endpoint if enabled, otherwise use regular Discord endpoint
+      const endpoint = data.autoWebhook ? "/api/pairs/discord-auto" : "/api/pairs/discord";
       const discordPairData = {
         ...data,
         pairType: "discord"
       };
-      return apiRequest("/api/pairs/discord", { method: "POST", body: JSON.stringify(discordPairData) });
+      return apiRequest(endpoint, { method: "POST", body: JSON.stringify(discordPairData) });
     },
     onSuccess: () => {
       toast({
@@ -71,6 +80,9 @@ export default function AddPairModal({ isOpen, onClose }: AddPairModalProps) {
       userId: 1,
       sourceChannel: "",
       discordWebhook: "",
+      discordChannelId: "",
+      discordBotId: "",
+      autoWebhook: false,
       destinationChannel: "",
       botToken: "",
       session: "",
@@ -83,11 +95,30 @@ export default function AddPairModal({ isOpen, onClose }: AddPairModalProps) {
     e.preventDefault();
     
     // Basic validation
-    if (!formData.name || !formData.sourceChannel || !formData.discordWebhook || 
-        !formData.destinationChannel || !formData.botToken || !formData.session) {
+    if (!formData.name || !formData.sourceChannel || !formData.destinationChannel || 
+        !formData.botToken || !formData.session) {
       toast({
         title: "Validation Error",
         description: "Please fill in all required fields",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate Discord configuration
+    if (formData.autoWebhook && !formData.discordChannelId) {
+      toast({
+        title: "Validation Error",
+        description: "Discord Channel ID is required when auto-webhook is enabled",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!formData.autoWebhook && !formData.discordWebhook) {
+      toast({
+        title: "Validation Error",
+        description: "Discord Webhook URL is required when auto-webhook is disabled",
         variant: "destructive",
       });
       return;
@@ -155,16 +186,80 @@ export default function AddPairModal({ isOpen, onClose }: AddPairModalProps) {
             />
           </div>
           
-          <div>
-            <Label htmlFor="discordWebhook">Discord Webhook URL *</Label>
-            <Input
-              id="discordWebhook"
-              type="url"
-              placeholder="https://discord.com/api/webhooks/..."
-              value={formData.discordWebhook}
-              onChange={(e) => handleInputChange("discordWebhook", e.target.value)}
-              className="mt-2"
-            />
+          {/* Auto-Webhook Toggle */}
+          <div className="space-y-4">
+            <div className="flex items-center space-x-3 p-4 border rounded-lg">
+              <Bot className="h-5 w-5 text-blue-600" />
+              <div className="flex-1">
+                <Label htmlFor="autoWebhook" className="text-sm font-medium">
+                  Auto-Create Discord Webhook
+                </Label>
+                <p className="text-xs text-gray-500 mt-1">
+                  Automatically create webhook using Discord bot instead of manual URL
+                </p>
+              </div>
+              <Switch
+                id="autoWebhook"
+                checked={formData.autoWebhook}
+                onCheckedChange={(checked) => handleInputChange("autoWebhook", checked)}
+              />
+            </div>
+
+            {formData.autoWebhook ? (
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="discordChannelId">Discord Channel ID *</Label>
+                  <Input
+                    id="discordChannelId"
+                    placeholder="123456789012345678"
+                    value={formData.discordChannelId}
+                    onChange={(e) => handleInputChange("discordChannelId", e.target.value)}
+                    className="mt-2"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Right-click Discord channel → Copy Channel ID
+                  </p>
+                </div>
+                
+                <div>
+                  <Label htmlFor="discordBot">Discord Bot *</Label>
+                  <Select onValueChange={(value) => handleInputChange("discordBotId", value)}>
+                    <SelectTrigger className="mt-2">
+                      <SelectValue placeholder="Select Discord bot..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {discordBots?.map((bot) => (
+                        <SelectItem key={bot.id} value={bot.id.toString()}>
+                          <div className="flex items-center space-x-2">
+                            <Bot className="h-4 w-4" />
+                            <span>{bot.name}</span>
+                            <span className="text-xs text-gray-500">({bot.status})</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            ) : (
+              <div>
+                <Label htmlFor="discordWebhook">Discord Webhook URL *</Label>
+                <Input
+                  id="discordWebhook"
+                  type="url"
+                  placeholder="https://discord.com/api/webhooks/..."
+                  value={formData.discordWebhook}
+                  onChange={(e) => handleInputChange("discordWebhook", e.target.value)}
+                  className="mt-2"
+                />
+                <div className="flex items-center space-x-1 mt-1">
+                  <Webhook className="h-3 w-3 text-gray-400" />
+                  <p className="text-xs text-gray-500">
+                    Paste your Discord webhook URL here
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
           
           <div>
