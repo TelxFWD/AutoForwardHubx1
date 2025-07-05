@@ -1646,14 +1646,34 @@ if __name__ == "__main__":
       // Get actual sessions from database
       const sessions = await storage.getAllSessions();
       
+      // Get all pairs from database
+      const allPairs = await storage.getAllPairs();
+      
       // Transform sessions to match expected format
-      const users = sessions.map(session => ({
-        user_id: session.name,
-        session_file: session.sessionFile,
-        status: session.status,
-        total_pairs: 0, // Would need to calculate from pairs table
-        trap_hits: 0, // Would need to calculate from activities table
-        pairs: [] // Would need to get from pairs table
+      const users = await Promise.all(sessions.map(async session => {
+        // Filter pairs for this session
+        const sessionPairs = allPairs.filter(pair => pair.sessionName === session.name);
+        
+        // Transform pairs to TelX format
+        const transformedPairs = sessionPairs.map(pair => ({
+          source: pair.sourceChannel,
+          destination: pair.destinationChannel,
+          strip_rules: {
+            remove_mentions: pair.removeMentions,
+            header_patterns: pair.headerPatterns || [],
+            footer_patterns: pair.footerPatterns || []
+          },
+          status: pair.status
+        }));
+
+        return {
+          user_id: session.name,
+          session_file: session.sessionFile,
+          status: session.status,
+          total_pairs: transformedPairs.length,
+          trap_hits: 0, // Would need to calculate from activities table
+          pairs: transformedPairs
+        };
       }));
       
       res.json(users);

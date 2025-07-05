@@ -187,15 +187,43 @@ export default function TelXPage() {
 
   // Pair management mutations
   const addPairMutation = useMutation({
-    mutationFn: (pairData: any) => fetch(`/api/copier/add-pair/${selectedUser}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(pairData),
-    }).then(res => res.json()),
+    mutationFn: async (pairData: any) => {
+      // Map the TelX format to database format
+      const dbPairData = {
+        name: `${pairData.source} → ${pairData.destination}`,
+        userId: 1, // Current user ID
+        sourceChannel: pairData.source,
+        destinationChannel: pairData.destination,
+        discordWebhook: `https://discord.com/api/webhooks/placeholder`, // Placeholder webhook
+        sessionName: selectedUser || 'default',
+        status: 'active',
+        removeMentions: pairData.strip_rules.remove_mentions,
+        headerPatterns: pairData.strip_rules.header_patterns,
+        footerPatterns: pairData.strip_rules.footer_patterns,
+        enableAi: false
+      };
+
+      const response = await fetch('/api/pairs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(dbPairData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to create pair');
+      }
+
+      return response.json();
+    },
     onSuccess: () => {
       toast({ title: "Success", description: "Pair added successfully" });
       queryClient.invalidateQueries({ queryKey: ['/api/copier/users'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/pairs'] });
       setShowAddPair(false);
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
     },
   });
 
@@ -1085,7 +1113,7 @@ export default function TelXPage() {
                 <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                 <h3 className="text-lg font-medium text-gray-900 mb-2">No User Sessions</h3>
                 <p className="text-gray-500 mb-4">Create your first Telegram user session to get started.</p>
-                <Button onClick={() => setShowAddUser(true)}>
+                <Button type="button" onClick={() => setShowAddUser(true)}>
                   <Plus className="w-4 h-4 mr-2" />
                   Add User Session
                 </Button>
@@ -1114,6 +1142,7 @@ export default function TelXPage() {
               </div>
               <div className="flex gap-3">
                 <Button 
+                  type="button"
                   onClick={() => setShowBlocklistManager(true)} 
                   variant="outline"
                   className="bg-orange-50 hover:bg-orange-100 border-orange-200 text-orange-700"
@@ -1122,6 +1151,7 @@ export default function TelXPage() {
                   Blocklist Manager
                 </Button>
                 <Button 
+                  type="button"
                   onClick={() => setShowAddPair(true)}
                   disabled={!selectedUser}
                   className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
