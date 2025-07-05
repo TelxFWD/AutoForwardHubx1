@@ -252,7 +252,7 @@ export class MemStorage implements IStorage {
   }
 
   async getUserByPin(pin: string): Promise<User | undefined> {
-    for (const user of this.users.values()) {
+    for (const user of Array.from(this.users.values())) {
       if (user.pin === pin) {
         return user;
       }
@@ -263,7 +263,10 @@ export class MemStorage implements IStorage {
   async createUser(user: InsertUser): Promise<User> {
     const newUser: User = {
       id: this.nextUserId++,
-      ...user,
+      pin: user.pin,
+      pinHash: user.pinHash,
+      displayName: user.displayName ?? null,
+      isActive: user.isActive ?? true,
       lastLogin: null,
       createdAt: new Date(),
     };
@@ -324,7 +327,7 @@ export class MemStorage implements IStorage {
   }
 
   async getSessionByName(name: string): Promise<Session | undefined> {
-    for (const session of this.sessions.values()) {
+    for (const session of Array.from(this.sessions.values())) {
       if (session.name === name) {
         return session;
       }

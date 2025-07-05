@@ -87,7 +87,8 @@ export class AuthStorage implements IAuthStorage {
   }
 
   async getUserByPin(pin: string): Promise<User | null> {
-    return await storage.getUserByPin(pin);
+    const user = await storage.getUserByPin(pin);
+    return user || null;
   }
 
   async getUserById(id: number): Promise<User | null> {
@@ -163,7 +164,7 @@ export class AuthStorage implements IAuthStorage {
 
   async cleanupExpiredSessions(): Promise<void> {
     const now = new Date();
-    for (const [token, session] of this.userSessions.entries()) {
+    for (const [token, session] of Array.from(this.userSessions.entries())) {
       if (session.expiresAt < now) {
         this.userSessions.delete(token);
       }

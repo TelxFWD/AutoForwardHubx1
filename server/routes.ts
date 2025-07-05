@@ -4,6 +4,9 @@ import { storage } from "./storage";
 import { authStorage } from "./auth-storage";
 import { insertPairSchema, insertSessionSchema, insertBlocklistSchema, insertActivitySchema, pinLoginSchema, createUserSchema } from "@shared/schema";
 import { z } from "zod";
+import { body, validationResult } from "express-validator";
+import rateLimit from "express-rate-limit";
+import helmet from "helmet";
 
 // Authentication middleware
 function requireAuth(req: any, res: any, next: any) {
@@ -612,8 +615,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const result = JSON.parse(stdout.trim());
             
             if (result.status === 'success') {
-              // Create session in database
+              // Create session in database with userId
               const session = await storage.createSession({
+                userId: 1, // Default user ID - will be enhanced with proper auth
                 name: result.session_name,
                 phone: phone,
                 sessionFile: `sessions/${result.session_name}.session`,
@@ -807,6 +811,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             if (result.status === "success") {
               try {
                 await storage.createSession({
+                  userId: 1, // Default user ID - will be enhanced with proper auth
                   name: result.session_name,
                   phone: phone,
                   sessionFile: `sessions/${result.session_name}.session`,

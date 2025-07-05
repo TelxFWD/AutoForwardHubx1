@@ -211,7 +211,7 @@ export function AdminPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {users?.filter(u => u.lastLogin)?.length || 0}
+                {users?.filter((u: any) => u.lastLogin)?.length || 0}
               </div>
               <p className="text-xs text-muted-foreground">
                 Users with recent activity
