@@ -121,9 +121,23 @@ export default function AddPairModal({ isOpen, onClose }: AddPairModalProps) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
+    console.log("=== FORM SUBMISSION DEBUG ===");
+    console.log("Form data:", formData);
+    console.log("Validation checks:");
+    console.log("- name:", !!formData.name);
+    console.log("- sourceChannel:", !!formData.sourceChannel);
+    console.log("- destinationChannel:", !!formData.destinationChannel);
+    console.log("- botToken:", !!formData.botToken);
+    console.log("- telegramBotId:", !!formData.telegramBotId);
+    console.log("- session:", !!formData.session);
+    console.log("- discordBotId:", !!formData.discordBotId);
+    console.log("- discordChannelId:", !!formData.discordChannelId);
+    console.log("- autoWebhook:", formData.autoWebhook);
+    
     // Basic validation
     if (!formData.name || !formData.sourceChannel || !formData.destinationChannel || 
-        !formData.botToken || !formData.session) {
+        (!formData.botToken && !formData.telegramBotId) || !formData.session) {
+      console.log("Basic validation failed");
       toast({
         title: "Validation Error",
         description: "Please fill in all required fields",
@@ -133,10 +147,10 @@ export default function AddPairModal({ isOpen, onClose }: AddPairModalProps) {
     }
 
     // Validate Discord configuration
-    if (formData.autoWebhook && !formData.discordChannelId) {
+    if (formData.autoWebhook && (!formData.discordChannelId || !formData.discordBotId)) {
       toast({
         title: "Validation Error",
-        description: "Discord Channel ID is required when auto-webhook is enabled",
+        description: "Discord Channel ID and Discord Bot are required when auto-webhook is enabled",
         variant: "destructive",
       });
       return;
