@@ -12,47 +12,67 @@ export async function apiRequest(
   config: RequestInit = {}
 ): Promise<any> {
   // Ensure Content-Type is set for requests with body
-  const headers: Record<string, string> = {
-    ...config.headers,
-  };
+  const headers: Record<string, string> = {};
+  
+  // Copy headers if they exist
+  if (config.headers) {
+    if (config.headers instanceof Headers) {
+      config.headers.forEach((value, key) => {
+        headers[key] = value;
+      });
+    } else {
+      Object.assign(headers, config.headers);
+    }
+  }
 
   // Add Content-Type for requests with body
   if (config.body && !headers["Content-Type"] && !headers["content-type"]) {
     headers["Content-Type"] = "application/json";
   }
 
-  console.log("=== API REQUEST ===");
-  console.log("URL:", url);
-  console.log("Method:", config.method || "GET");
-  console.log("Headers:", headers);
-  console.log("Body:", config.body);
+  // Only log in development
+  if (import.meta.env.DEV) {
+    console.log("=== API REQUEST ===");
+    console.log("URL:", url);
+    console.log("Method:", config.method || "GET");
+    console.log("Headers:", headers);
+    console.log("Body:", config.body);
+  }
 
   const response = await fetch(url, {
     ...config,
     headers,
   });
 
-  console.log("Response status:", response.status);
-  console.log("Response headers:", Object.fromEntries(response.headers.entries()));
+  if (import.meta.env.DEV) {
+    console.log("Response status:", response.status);
+    console.log("Response headers:", Object.fromEntries(response.headers.entries()));
+  }
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({
       message: `HTTP ${response.status}: ${response.statusText}`,
     }));
 
-    console.error("API request failed:", error);
+    if (import.meta.env.DEV) {
+      console.error("API request failed:", error);
+    }
     throw new Error(error.message || "Request failed");
   }
 
   const contentType = response.headers.get("Content-Type");
   if (contentType && contentType.includes("application/json")) {
     const responseData = await response.json();
-    console.log("Response data:", responseData);
+    if (import.meta.env.DEV) {
+      console.log("Response data:", responseData);
+    }
     return responseData;
   }
 
   const responseText = await response.text();
-  console.log("Response text:", responseText);
+  if (import.meta.env.DEV) {
+    console.log("Response text:", responseText);
+  }
   return responseText;
 }
 

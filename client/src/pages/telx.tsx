@@ -81,28 +81,64 @@ export default function TelXPage() {
   const queryClient = useQueryClient();
 
   // Fetch real sessions from the database
-  const { data: sessions = [], isLoading: sessionsLoading } = useQuery({
+  const { data: sessions = [], isLoading: sessionsLoading, error: sessionsError } = useQuery({
     queryKey: ['/api/sessions'],
     refetchInterval: 30000,
+    retry: 3,
   });
 
   // Fetch copier users
-  const { data: users = [], isLoading: usersLoading } = useQuery({
+  const { data: users = [], isLoading: usersLoading, error: usersError } = useQuery({
     queryKey: ['/api/copier/users'],
-    refetchInterval: 30000, // Reduced from 5000 to 30000 (30 seconds)
+    refetchInterval: 30000,
+    retry: 3,
   });
 
   // Fetch blocked images
-  const { data: blockedImages = [], isLoading: imagesLoading } = useQuery({
+  const { data: blockedImages = [], isLoading: imagesLoading, error: imagesError } = useQuery({
     queryKey: ['/api/block/images'],
-    refetchInterval: 60000, // Reduced refresh frequency to 60 seconds
+    refetchInterval: 60000,
+    retry: 3,
   });
 
   // Fetch trap logs
-  const { data: trapLogs = [], isLoading: logsLoading } = useQuery({
+  const { data: trapLogs = [], isLoading: logsLoading, error: logsError } = useQuery({
     queryKey: ['/api/logs/traps'],
-    refetchInterval: 30000, // Reduced from 5000 to 30000 (30 seconds)
+    refetchInterval: 30000,
+    retry: 3,
   });
+
+  // Display errors using toast
+  useEffect(() => {
+    if (sessionsError) {
+      toast({
+        title: "Error loading sessions",
+        description: "Failed to fetch session data",
+        variant: "destructive",
+      });
+    }
+    if (usersError) {
+      toast({
+        title: "Error loading users",
+        description: "Failed to fetch user data",
+        variant: "destructive",
+      });
+    }
+    if (imagesError) {
+      toast({
+        title: "Error loading images",
+        description: "Failed to fetch blocked images",
+        variant: "destructive",
+      });
+    }
+    if (logsError) {
+      toast({
+        title: "Error loading logs",
+        description: "Failed to fetch trap logs",
+        variant: "destructive",
+      });
+    }
+  }, [sessionsError, usersError, imagesError, logsError, toast]);
 
   // Type-safe data
   const typedUsers = users as User[];

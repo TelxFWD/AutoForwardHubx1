@@ -135,7 +135,7 @@ export default function AddPairModal({ isOpen, onClose }: AddPairModalProps) {
                 </SelectTrigger>
                 <SelectContent>
                   {sessions?.map((session) => (
-                    <SelectItem key={session.id} value={session.name}>
+                    <SelectItem key={session.id} value={session.name || ""}>
                       {session.name} ({session.phone})
                     </SelectItem>
                   ))}

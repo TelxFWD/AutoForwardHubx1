@@ -14,7 +14,7 @@ import { AdminPage } from "@/pages/AdminPage";
 function App() {
   const [activeView, setActiveView] = useState("dashboard");
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState<any>(null);
   const [location] = useLocation();
 
   useEffect(() => {
