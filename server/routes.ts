@@ -5,7 +5,7 @@ import { authStorage } from "./auth-storage";
 import { otpStorage } from "./otp-storage";
 import { DiscordService } from "./discord-service";
 import { TelegramService } from "./telegram-service";
-import { insertPairSchema, insertTelegramPairSchema, insertDiscordPairSchema, insertSessionSchema, insertBlocklistSchema, insertActivitySchema, pinLoginSchema, createUserSchema, otpRequestSchema, otpVerifySchema, insertDiscordBotSchema, insertTelegramBotSchema } from "@shared/schema";
+import { insertPairSchema, insertTelTelPairSchema, insertTelDiscTelPairSchema, insertSessionSchema, insertBlocklistSchema, insertActivitySchema, pinLoginSchema, createUserSchema, otpRequestSchema, otpVerifySchema, insertDiscordBotSchema, insertTelegramBotSchema } from "@shared/schema";
 // Enhanced OTP routes will be registered separately if needed
 import { z } from "zod";
 import { body, validationResult } from "express-validator";
@@ -308,7 +308,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/pairs/telegram", async (req, res) => {
     try {
       console.log("Creating Telegram pair with data:", req.body);
-      const validatedData = insertTelegramPairSchema.parse(req.body);
+      const validatedData = insertTelTelPairSchema.parse(req.body);
       console.log("Validated Telegram pair data:", validatedData);
       
       const pair = await storage.createPair(validatedData);
@@ -356,7 +356,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         pairData.botToken = telegramBot.token;
       }
       
-      const validatedData = insertDiscordPairSchema.parse(pairData);
+      const validatedData = insertTelDiscTelPairSchema.parse(pairData);
       console.log("Validated Discord pair data:", validatedData);
       
       const pair = await storage.createPair(validatedData);

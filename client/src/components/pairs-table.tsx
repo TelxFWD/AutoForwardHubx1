@@ -6,12 +6,38 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { getStatusColor } from "@/lib/utils";
-import { Play, Pause, Edit, Trash2, Filter, Plus } from "lucide-react";
+import { Play, Pause, Edit, Trash2, Filter, Plus, MessageSquare, ArrowRight, Bot } from "lucide-react";
 import type { Pair } from "@shared/schema";
 
 interface PairsTableProps {
   onAddPair: () => void;
 }
+
+// Helper function to render pair type flow
+const renderPairTypeFlow = (pairType: string) => {
+  if (pairType === 'tel-tel') {
+    return (
+      <div className="flex items-center space-x-1 text-xs">
+        <MessageSquare className="w-3 h-3 text-blue-500" />
+        <ArrowRight className="w-3 h-3 text-gray-400" />
+        <MessageSquare className="w-3 h-3 text-blue-500" />
+        <span className="ml-1 text-gray-600">Direct</span>
+      </div>
+    );
+  } else if (pairType === 'tel-disc-tel') {
+    return (
+      <div className="flex items-center space-x-1 text-xs">
+        <MessageSquare className="w-3 h-3 text-blue-500" />
+        <ArrowRight className="w-3 h-3 text-gray-400" />
+        <Bot className="w-3 h-3 text-purple-500" />
+        <ArrowRight className="w-3 h-3 text-gray-400" />
+        <MessageSquare className="w-3 h-3 text-blue-500" />
+        <span className="ml-1 text-gray-600">Enhanced</span>
+      </div>
+    );
+  }
+  return <span className="text-xs text-gray-500">Unknown</span>;
+};
 
 export default function PairsTable({ onAddPair }: PairsTableProps) {
   const { toast } = useToast();
@@ -128,6 +154,9 @@ export default function PairsTable({ onAddPair }: PairsTableProps) {
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Pair Name
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Type
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Source Channel

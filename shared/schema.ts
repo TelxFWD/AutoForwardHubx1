@@ -24,22 +24,30 @@ export const pairs = sqliteTable("pairs", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   userId: integer("user_id").notNull(), // Associated user
   name: text("name").notNull(),
-  pairType: text("pair_type").notNull().default("telegram"), // telegram, discord
+  pairType: text("pair_type").notNull().default("tel-tel"), // tel-tel, tel-disc-tel
   sourceChannel: text("source_channel").notNull(),
-  discordWebhook: text("discord_webhook"), // Optional for telegram pairs
+  discordWebhook: text("discord_webhook"), // Optional for tel-tel pairs
   discordChannelId: text("discord_channel_id"), // Discord channel ID for auto-webhook
   autoWebhook: integer("auto_webhook", { mode: "boolean" }).default(false), // Auto-create webhook toggle
   destinationChannel: text("destination_channel").notNull(),
-  botToken: text("bot_token"), // Optional for telegram pairs
+  botToken: text("bot_token"), // Optional for tel-tel pairs
   telegramBotId: integer("telegram_bot_id"),
   discordBotId: integer("discord_bot_id"),
   session: text("session_name").notNull(),
   status: text("status").notNull().default("active"), // active, paused, error
+  
+  // Advanced features (shared between both pair types)
   enableAI: integer("enable_ai", { mode: "boolean" }).default(false),
-  // Telegram-specific fields
+  enableTrapDetection: integer("enable_trap_detection", { mode: "boolean" }).default(true),
+  applyStripRules: integer("apply_strip_rules", { mode: "boolean" }).default(true),
+  useMentionFilter: integer("use_mention_filter", { mode: "boolean" }).default(true),
+  
+  // Content filtering patterns
   removeMentions: integer("remove_mentions", { mode: "boolean" }).default(true),
   headerPatterns: text("header_patterns"), // JSON string of array
   footerPatterns: text("footer_patterns"), // JSON string of array
+  
+  // Statistics
   messageCount: integer("message_count").default(0),
   blockedCount: integer("blocked_count").default(0),
   createdAt: text("created_at").default("datetime('now')"), // ISO string format
@@ -153,36 +161,47 @@ export const insertPairSchema = createInsertSchema(pairs).omit({
 });
 
 // Separate schemas for different pair types
-export const insertTelegramPairSchema = createInsertSchema(pairs).omit({
+export const insertTelTelPairSchema = createInsertSchema(pairs).omit({
   id: true,
   messageCount: true,
   blockedCount: true,
   createdAt: true,
   updatedAt: true,
   discordWebhook: true,
-  botToken: true,
+  discordChannelId: true,
+  autoWebhook: true,
+  discordBotId: true,
 }).extend({
-  pairType: z.literal("telegram"),
+  pairType: z.literal("tel-tel"),
+  // Advanced features for tel-tel pairs
+  enableTrapDetection: z.boolean().default(true),
+  applyStripRules: z.boolean().default(true),
+  useMentionFilter: z.boolean().default(true),
+  enableAI: z.boolean().default(false),
   removeMentions: z.boolean().default(true),
   headerPatterns: z.string().optional(), // JSON string
   footerPatterns: z.string().optional(), // JSON string
 });
 
-export const insertDiscordPairSchema = createInsertSchema(pairs).omit({
+export const insertTelDiscTelPairSchema = createInsertSchema(pairs).omit({
   id: true,
   messageCount: true,
   blockedCount: true,
   createdAt: true,
   updatedAt: true,
-  removeMentions: true,
-  headerPatterns: true,
-  footerPatterns: true,
 }).extend({
-  pairType: z.literal("discord"),
+  pairType: z.literal("tel-disc-tel"),
   discordWebhook: z.string().url("Discord webhook must be a valid URL").optional(),
   discordChannelId: z.string().optional(),
   autoWebhook: z.boolean().default(false),
-  botToken: z.string().min(1, "Bot token is required for Discord pairs"),
+  // Advanced features for tel-disc-tel pairs
+  enableTrapDetection: z.boolean().default(true),
+  applyStripRules: z.boolean().default(true),
+  useMentionFilter: z.boolean().default(true),
+  enableAI: z.boolean().default(false),
+  removeMentions: z.boolean().default(true),
+  headerPatterns: z.string().optional(), // JSON string
+  footerPatterns: z.string().optional(), // JSON string
 });
 
 export const insertDiscordBotSchema = createInsertSchema(discordBots).omit({
@@ -252,8 +271,8 @@ export type InsertUserSession = z.infer<typeof insertUserSessionSchema>;
 
 export type Pair = typeof pairs.$inferSelect;
 export type InsertPair = z.infer<typeof insertPairSchema>;
-export type InsertTelegramPair = z.infer<typeof insertTelegramPairSchema>;
-export type InsertDiscordPair = z.infer<typeof insertDiscordPairSchema>;
+export type InsertTelTelPair = z.infer<typeof insertTelTelPairSchema>;
+export type InsertTelDiscTelPair = z.infer<typeof insertTelDiscTelPairSchema>;
 
 export type Session = typeof sessions.$inferSelect;
 export type InsertSession = z.infer<typeof insertSessionSchema>;

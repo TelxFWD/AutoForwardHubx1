@@ -37,6 +37,7 @@ export default function AddPairModal({ isOpen, onClose }: AddPairModalProps) {
   const [formData, setFormData] = useState({
     name: "",
     userId: 1, // Default user ID
+    pairType: "tel-tel", // Default to Telegram to Telegram
     sourceChannel: "",
     discordWebhook: "",
     discordChannelId: "",
@@ -48,6 +49,9 @@ export default function AddPairModal({ isOpen, onClose }: AddPairModalProps) {
     session: "",
     status: "active",
     enableAI: false,
+    enableTrapDetection: true,
+    applyStripRules: true,
+    useMentionFilter: true,
   });
 
   const { toast } = useToast();
@@ -104,6 +108,7 @@ export default function AddPairModal({ isOpen, onClose }: AddPairModalProps) {
     setFormData({
       name: "",
       userId: 1,
+      pairType: "tel-tel",
       sourceChannel: "",
       discordWebhook: "",
       discordChannelId: "",
@@ -115,6 +120,9 @@ export default function AddPairModal({ isOpen, onClose }: AddPairModalProps) {
       session: "",
       status: "active",
       enableAI: false,
+      enableTrapDetection: true,
+      applyStripRules: true,
+      useMentionFilter: true,
     });
   };
 
@@ -146,23 +154,25 @@ export default function AddPairModal({ isOpen, onClose }: AddPairModalProps) {
       return;
     }
 
-    // Validate Discord configuration
-    if (formData.autoWebhook && (!formData.discordChannelId || !formData.discordBotId)) {
-      toast({
-        title: "Validation Error",
-        description: "Discord Channel ID and Discord Bot are required when auto-webhook is enabled",
-        variant: "destructive",
-      });
-      return;
-    }
+    // Validate Discord configuration only for tel-disc-tel pairs
+    if (formData.pairType === 'tel-disc-tel') {
+      if (formData.autoWebhook && (!formData.discordChannelId || !formData.discordBotId)) {
+        toast({
+          title: "Validation Error",
+          description: "Discord Channel ID and Discord Bot are required when auto-webhook is enabled",
+          variant: "destructive",
+        });
+        return;
+      }
 
-    if (!formData.autoWebhook && !formData.discordWebhook) {
-      toast({
-        title: "Validation Error",
-        description: "Discord Webhook URL is required when auto-webhook is disabled",
-        variant: "destructive",
-      });
-      return;
+      if (!formData.autoWebhook && !formData.discordWebhook) {
+        toast({
+          title: "Validation Error",
+          description: "Discord Webhook URL is required when auto-webhook is disabled",
+          variant: "destructive",
+        });
+        return;
+      }
     }
 
     createPairMutation.mutate(formData);
@@ -183,12 +193,25 @@ export default function AddPairModal({ isOpen, onClose }: AddPairModalProps) {
             </Button>
           </div>
           <p className="text-sm text-gray-600 mt-2">
-            Configure a new message forwarding pair between Telegram and Discord channels
+            Configure a new message forwarding pair
           </p>
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <Label htmlFor="pairType">Forwarding Type *</Label>
+              <Select value={formData.pairType} onValueChange={(value) => handleInputChange('pairType', value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select forwarding type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="tel-tel">Telegram → Telegram</SelectItem>
+                  <SelectItem value="tel-disc-tel">Telegram → Discord → Telegram</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
             <div>
               <Label htmlFor="pairName">Pair Name *</Label>
               <Input
@@ -227,24 +250,25 @@ export default function AddPairModal({ isOpen, onClose }: AddPairModalProps) {
             />
           </div>
           
-          {/* Auto-Webhook Toggle */}
-          <div className="space-y-4">
-            <div className="flex items-center space-x-3 p-4 border rounded-lg">
-              <Bot className="h-5 w-5 text-blue-600" />
-              <div className="flex-1">
-                <Label htmlFor="autoWebhook" className="text-sm font-medium">
-                  Auto-Create Discord Webhook
-                </Label>
-                <p className="text-xs text-gray-500 mt-1">
-                  Automatically create webhook using Discord bot instead of manual URL
-                </p>
+          {/* Discord Configuration - Only for tel-disc-tel */}
+          {formData.pairType === 'tel-disc-tel' && (
+            <div className="space-y-4">
+              <div className="flex items-center space-x-3 p-4 border rounded-lg">
+                <Bot className="h-5 w-5 text-blue-600" />
+                <div className="flex-1">
+                  <Label htmlFor="autoWebhook" className="text-sm font-medium">
+                    Auto-Create Discord Webhook
+                  </Label>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Automatically create webhook using Discord bot instead of manual URL
+                  </p>
+                </div>
+                <Switch
+                  id="autoWebhook"
+                  checked={formData.autoWebhook}
+                  onCheckedChange={(checked) => handleInputChange("autoWebhook", checked)}
+                />
               </div>
-              <Switch
-                id="autoWebhook"
-                checked={formData.autoWebhook}
-                onCheckedChange={(checked) => handleInputChange("autoWebhook", checked)}
-              />
-            </div>
 
             {formData.autoWebhook ? (
               <div className="space-y-4">
@@ -301,7 +325,8 @@ export default function AddPairModal({ isOpen, onClose }: AddPairModalProps) {
                 </div>
               </div>
             )}
-          </div>
+            </div>
+          )}
           
           <div>
             <Label htmlFor="destinationChannel">Destination Telegram Channel *</Label>
@@ -369,15 +394,58 @@ export default function AddPairModal({ isOpen, onClose }: AddPairModalProps) {
             </div>
           </div>
           
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="enableAI"
-              checked={formData.enableAI}
-              onCheckedChange={(checked: CheckedState) => handleInputChange("enableAI", checked === true)}
-            />
-            <Label htmlFor="enableAI" className="text-sm text-gray-700">
-              Enable AI content filtering
-            </Label>
+          {/* Advanced Features Section */}
+          <div className="space-y-4 p-4 border rounded-lg bg-gray-50">
+            <h3 className="text-lg font-medium text-gray-900">Advanced Features</h3>
+            <p className="text-sm text-gray-600">
+              Configure advanced filtering and processing options for your messages.
+            </p>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="enableTrapDetection"
+                  checked={formData.enableTrapDetection}
+                  onCheckedChange={(checked: CheckedState) => handleInputChange("enableTrapDetection", checked === true)}
+                />
+                <Label htmlFor="enableTrapDetection" className="text-sm text-gray-700">
+                  Enable trap detection
+                </Label>
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="applyStripRules"
+                  checked={formData.applyStripRules}
+                  onCheckedChange={(checked: CheckedState) => handleInputChange("applyStripRules", checked === true)}
+                />
+                <Label htmlFor="applyStripRules" className="text-sm text-gray-700">
+                  Apply strip rules (headers/footers)
+                </Label>
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="useMentionFilter"
+                  checked={formData.useMentionFilter}
+                  onCheckedChange={(checked: CheckedState) => handleInputChange("useMentionFilter", checked === true)}
+                />
+                <Label htmlFor="useMentionFilter" className="text-sm text-gray-700">
+                  Use mention filter
+                </Label>
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="enableAI"
+                  checked={formData.enableAI}
+                  onCheckedChange={(checked: CheckedState) => handleInputChange("enableAI", checked === true)}
+                />
+                <Label htmlFor="enableAI" className="text-sm text-gray-700">
+                  Enable AI content filtering
+                </Label>
+              </div>
+            </div>
           </div>
           
           <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
