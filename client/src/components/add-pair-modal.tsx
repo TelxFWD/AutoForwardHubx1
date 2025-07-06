@@ -52,6 +52,8 @@ export default function AddPairModal({ isOpen, onClose }: AddPairModalProps) {
     enableTrapDetection: true,
     applyStripRules: true,
     useMentionFilter: true,
+    stripFooter: false,
+    footerPatterns: "",
   });
 
   const { toast } = useToast();
@@ -71,17 +73,35 @@ export default function AddPairModal({ isOpen, onClose }: AddPairModalProps) {
 
   const createPairMutation = useMutation({
     mutationFn: (data: any) => {
-      // Use auto-webhook endpoint if enabled, otherwise use regular Discord endpoint
-      const endpoint = data.autoWebhook ? "/api/pairs/discord-auto" : "/api/pairs/discord";
+      let endpoint: string;
+      let pairData: any;
       
-      // Prepare the pair data
-      const pairData = {
-        ...data,
-        pairType: "discord",
-        // Convert string IDs to numbers
-        telegramBotId: data.telegramBotId ? parseInt(data.telegramBotId) : null,
-        discordBotId: data.discordBotId ? parseInt(data.discordBotId) : null,
-      };
+      if (data.pairType === 'tel-tel') {
+        // Telegram → Telegram pairs
+        endpoint = "/api/pairs/telegram";
+        pairData = {
+          ...data,
+          // Ensure session is set and bot token is ignored
+          session: data.session,
+          // Footer patterns should be converted from comma-separated string to JSON
+          footerPatterns: data.footerPatterns ? JSON.stringify(data.footerPatterns.split(',').map((p: string) => p.trim()).filter((p: string) => p)) : null,
+        };
+        // Remove bot token fields for tel-tel pairs
+        delete pairData.botToken;
+        delete pairData.telegramBotId;
+      } else {
+        // Telegram → Discord → Telegram pairs
+        endpoint = data.autoWebhook ? "/api/pairs/discord-auto" : "/api/pairs/discord";
+        pairData = {
+          ...data,
+          pairType: "tel-disc-tel",
+          // Convert string IDs to numbers
+          telegramBotId: data.telegramBotId ? parseInt(data.telegramBotId) : null,
+          discordBotId: data.discordBotId ? parseInt(data.discordBotId) : null,
+          // Footer patterns should be converted from comma-separated string to JSON
+          footerPatterns: data.footerPatterns ? JSON.stringify(data.footerPatterns.split(',').map((p: string) => p.trim()).filter((p: string) => p)) : null,
+        };
+      }
       
       return apiRequest(endpoint, { method: "POST", body: JSON.stringify(pairData) });
     },
@@ -339,6 +359,8 @@ export default function AddPairModal({ isOpen, onClose }: AddPairModalProps) {
             />
           </div>
           
+          {/* Telegram Bot Token - Only for tel-disc-tel pairs */}
+          {formData.pairType === 'tel-disc-tel' && (
           <div>
             <Label htmlFor="telegramBotId">Telegram Bot Token *</Label>
             <div className="space-y-2">
@@ -393,6 +415,20 @@ export default function AddPairModal({ isOpen, onClose }: AddPairModalProps) {
               )}
             </div>
           </div>
+          )}
+          
+          {/* User Session Note for tel-tel pairs */}
+          {formData.pairType === 'tel-tel' && (
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex items-center space-x-2">
+                <User className="h-4 w-4 text-blue-600" />
+                <span className="text-sm font-medium text-blue-900">Uses your saved session to post messages.</span>
+              </div>
+              <p className="text-xs text-blue-700 mt-1">
+                Telegram → Telegram pairs use your user session (TelethonClient) instead of bot tokens for secure message forwarding.
+              </p>
+            </div>
+          )}
           
           {/* Advanced Features Section */}
           <div className="space-y-4 p-4 border rounded-lg bg-gray-50">
@@ -445,7 +481,37 @@ export default function AddPairModal({ isOpen, onClose }: AddPairModalProps) {
                   Enable AI content filtering
                 </Label>
               </div>
+              
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="stripFooter"
+                  checked={formData.stripFooter}
+                  onCheckedChange={(checked: CheckedState) => handleInputChange("stripFooter", checked === true)}
+                />
+                <Label htmlFor="stripFooter" className="text-sm text-gray-700">
+                  Enable footer stripping
+                </Label>
+              </div>
             </div>
+            
+            {/* Footer Patterns Input - Show when footer stripping is enabled */}
+            {formData.stripFooter && (
+              <div className="mt-4 space-y-2">
+                <Label htmlFor="footerPatterns" className="text-sm text-gray-700">
+                  Footer Regex Patterns (comma-separated)
+                </Label>
+                <Input
+                  id="footerPatterns"
+                  placeholder="join.*, shared by.*, autocopy.*"
+                  value={formData.footerPatterns}
+                  onChange={(e) => handleInputChange("footerPatterns", e.target.value)}
+                  className="w-full"
+                />
+                <p className="text-xs text-gray-500">
+                  Example: <code>join.*</code>, <code>shared by.*</code>, <code>autocopy.*</code>
+                </p>
+              </div>
+            )}
           </div>
           
           <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">

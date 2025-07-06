@@ -45,6 +45,8 @@ export const pairs = sqliteTable("pairs", {
   // Content filtering patterns
   removeMentions: integer("remove_mentions", { mode: "boolean" }).default(true),
   blockImages: integer("block_images", { mode: "boolean" }).default(false),
+  stripFooter: integer("strip_footer", { mode: "boolean" }).default(false),
+  footerPatterns: text("footer_patterns"), // JSON array of footer regex patterns
   
   // Statistics
   messageCount: integer("message_count").default(0),
@@ -178,7 +180,9 @@ export const insertTelTelPairSchema = createInsertSchema(pairs).omit({
   useMentionFilter: z.boolean().default(true),
   enableAI: z.boolean().default(false),
   removeMentions: z.boolean().default(true),
-  blockImages: z.boolean().default(false)
+  blockImages: z.boolean().default(false),
+  stripFooter: z.boolean().default(false),
+  footerPatterns: z.string().optional()
 });
 
 export const insertTelDiscTelPairSchema = createInsertSchema(pairs).omit({
@@ -198,7 +202,9 @@ export const insertTelDiscTelPairSchema = createInsertSchema(pairs).omit({
   useMentionFilter: z.boolean().default(true),
   enableAI: z.boolean().default(false),
   removeMentions: z.boolean().default(true),
-  blockImages: z.boolean().default(false)
+  blockImages: z.boolean().default(false),
+  stripFooter: z.boolean().default(false),
+  footerPatterns: z.string().optional()
 });
 
 export const insertDiscordBotSchema = createInsertSchema(discordBots).omit({

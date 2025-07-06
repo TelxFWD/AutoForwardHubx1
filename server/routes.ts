@@ -308,6 +308,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/pairs/telegram", async (req, res) => {
     try {
       console.log("Creating Telegram pair with data:", req.body);
+      
+      // Validate that session exists and is active for tel-tel pairs
+      if (req.body.pairType === 'tel-tel' || req.body.pairType === 'telegram') {
+        const sessionName = req.body.session || req.body.sessionName;
+        if (!sessionName) {
+          return res.status(400).json({ 
+            message: "Session is required for Telegram → Telegram pairs",
+            error: "missing_session" 
+          });
+        }
+        
+        // Check if session exists and is active
+        const sessions = await storage.getAllSessions();
+        const session = sessions.find(s => s.name === sessionName);
+        if (!session) {
+          return res.status(400).json({ 
+            message: `Session '${sessionName}' not found. Please create the session first.`,
+            error: "session_not_found" 
+          });
+        }
+        
+        if (session.status !== 'active') {
+          return res.status(400).json({ 
+            message: `Session '${sessionName}' is not active. Please activate the session first.`,
+            error: "session_inactive" 
+          });
+        }
+      }
+      
       const validatedData = insertTelTelPairSchema.parse(req.body);
       console.log("Validated Telegram pair data:", validatedData);
       

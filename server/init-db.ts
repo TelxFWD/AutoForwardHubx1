@@ -55,6 +55,8 @@ export async function initializeDatabase() {
         use_mention_filter INTEGER DEFAULT 1,
         remove_mentions INTEGER DEFAULT 1,
         block_images INTEGER DEFAULT 0,
+        strip_footer INTEGER DEFAULT 0,
+        footer_patterns TEXT,
         message_count INTEGER DEFAULT 0,
         blocked_count INTEGER DEFAULT 0,
         created_at TEXT DEFAULT (datetime('now')),
