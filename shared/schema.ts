@@ -44,8 +44,7 @@ export const pairs = sqliteTable("pairs", {
   
   // Content filtering patterns
   removeMentions: integer("remove_mentions", { mode: "boolean" }).default(true),
-  headerPatterns: text("header_patterns"), // JSON string of array
-  footerPatterns: text("footer_patterns"), // JSON string of array
+  blockImages: integer("block_images", { mode: "boolean" }).default(false),
   
   // Statistics
   messageCount: integer("message_count").default(0),
@@ -92,7 +91,7 @@ export const sessions = sqliteTable("sessions", {
 
 export const blocklists = sqliteTable("blocklists", {
   id: integer("id").primaryKey({ autoIncrement: true }),
-  type: text("type").notNull(), // word, image_hash, trap_pattern
+  type: text("type").notNull(), // word, image_hash, trap_pattern, header_regex, footer_regex, block_images
   value: text("value").notNull(),
   pairId: integer("pair_id"), // null for global blocklist
   isActive: integer("is_active", { mode: "boolean" }).default(true),
@@ -179,8 +178,7 @@ export const insertTelTelPairSchema = createInsertSchema(pairs).omit({
   useMentionFilter: z.boolean().default(true),
   enableAI: z.boolean().default(false),
   removeMentions: z.boolean().default(true),
-  headerPatterns: z.string().optional(), // JSON string
-  footerPatterns: z.string().optional(), // JSON string
+  blockImages: z.boolean().default(false)
 });
 
 export const insertTelDiscTelPairSchema = createInsertSchema(pairs).omit({
@@ -200,8 +198,7 @@ export const insertTelDiscTelPairSchema = createInsertSchema(pairs).omit({
   useMentionFilter: z.boolean().default(true),
   enableAI: z.boolean().default(false),
   removeMentions: z.boolean().default(true),
-  headerPatterns: z.string().optional(), // JSON string
-  footerPatterns: z.string().optional(), // JSON string
+  blockImages: z.boolean().default(false)
 });
 
 export const insertDiscordBotSchema = createInsertSchema(discordBots).omit({

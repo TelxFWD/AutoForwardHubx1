@@ -6,7 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AlertTriangle, Shield, Plus, X, Eye } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
+import { AlertTriangle, Shield, Plus, X, Eye, Image, MessageSquare, Filter, FileText } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -16,14 +18,18 @@ export default function TrapDetection() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [newBlockText, setNewBlockText] = useState("");
+  const [newHeaderPattern, setNewHeaderPattern] = useState("");
+  const [newFooterPattern, setNewFooterPattern] = useState("");
   const [selectedPair, setSelectedPair] = useState<string>("global");
+  const [blockType, setBlockType] = useState<string>("word");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
-  const { data: blocklists = [], isLoading: blocklistsLoading } = useQuery({
+  const { data: blocklists = [], isLoading: blocklistsLoading } = useQuery<Blocklist[]>({
     queryKey: ["/api/blocklists"],
     refetchInterval: 30000,
   });
 
-  const { data: pairs = [] } = useQuery({
+  const { data: pairs = [] } = useQuery<Pair[]>({
     queryKey: ["/api/pairs"],
   });
 
@@ -33,6 +39,8 @@ export default function TrapDetection() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/blocklists"] });
       setNewBlockText("");
+      setNewHeaderPattern("");
+      setNewFooterPattern("");
       toast({
         title: "Block rule added",
         description: "New blocking rule has been added successfully.",
@@ -58,22 +66,92 @@ export default function TrapDetection() {
     },
   });
 
-  const handleAddBlock = () => {
-    if (!newBlockText.trim()) {
+  const addImageBlockMutation = useMutation({
+    mutationFn: (formData: FormData) =>
+      fetch("/api/blocklists/image", {
+        method: "POST",
+        body: formData,
+      }).then(res => res.json()),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/blocklists"] });
+      setSelectedFile(null);
       toast({
-        title: "Invalid input",
-        description: "Please enter text to block.",
+        title: "Image block added",
+        description: "Image has been added to blocklist.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to add image to blocklist.",
         variant: "destructive",
       });
-      return;
+    },
+  });
+
+  const handleAddBlock = () => {
+    let value = "";
+    let type = blockType;
+    
+    if (blockType === "word" || blockType === "trap_pattern") {
+      if (!newBlockText.trim()) {
+        toast({
+          title: "Invalid input",
+          description: "Please enter text to block.",
+          variant: "destructive",
+        });
+        return;
+      }
+      value = newBlockText.trim();
+    } else if (blockType === "header_regex") {
+      if (!newHeaderPattern.trim()) {
+        toast({
+          title: "Invalid input",
+          description: "Please enter header pattern.",
+          variant: "destructive",
+        });
+        return;
+      }
+      value = newHeaderPattern.trim();
+    } else if (blockType === "footer_regex") {
+      if (!newFooterPattern.trim()) {
+        toast({
+          title: "Invalid input",
+          description: "Please enter footer pattern.",
+          variant: "destructive",
+        });
+        return;
+      }
+      value = newFooterPattern.trim();
+    } else if (blockType === "block_images") {
+      value = "enabled";
     }
 
     const pairId = selectedPair === "global" ? undefined : parseInt(selectedPair);
     addBlocklistMutation.mutate({
-      type: "text",
-      value: newBlockText.trim(),
+      type,
+      value,
       pairId,
     });
+  };
+
+  const handleAddImage = () => {
+    if (!selectedFile) {
+      toast({
+        title: "No file selected",
+        description: "Please select an image file.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    const formData = new FormData();
+    formData.append("image", selectedFile);
+    if (selectedPair !== "global") {
+      formData.append("pairId", selectedPair);
+    }
+    
+    addImageBlockMutation.mutate(formData);
   };
 
   const globalBlocks = blocklists.filter((b: Blocklist) => !b.pairId);
@@ -100,20 +178,19 @@ export default function TrapDetection() {
 
   return (
     <div className="space-y-6">
-      {/* Add New Block Rule */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
             <Shield className="h-5 w-5" />
-            <span>Add Block Rule</span>
+            <span>Block Manager</span>
           </CardTitle>
           <CardDescription>
-            Add text patterns to block across all pairs or specific pairs
+            Manage text patterns, image blocking, and strip rules for content filtering
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="scope">Scope</Label>
+            <Label htmlFor="pairSelect">Apply to</Label>
             <Select value={selectedPair} onValueChange={setSelectedPair}>
               <SelectTrigger>
                 <SelectValue placeholder="Select scope" />
@@ -122,7 +199,7 @@ export default function TrapDetection() {
                 <SelectItem value="global">Global (All Pairs)</SelectItem>
                 {pairs.map((pair: Pair) => (
                   <SelectItem key={pair.id} value={pair.id.toString()}>
-                    {pair.name}
+                    {pair.name} ({pair.pairType})
                   </SelectItem>
                 ))}
               </SelectContent>

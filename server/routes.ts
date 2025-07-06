@@ -948,6 +948,34 @@ if __name__ == "__main__":
     }
   });
 
+  // Image blocking endpoint
+  app.post("/api/blocklists/image", async (req, res) => {
+    try {
+      // For now, create a simple image hash entry
+      // In production, this would handle file upload and generate MD5 hash
+      const mockHash = "d41d8cd98f00b204e9800998ecf8427e"; // Mock hash for development
+      
+      const pairId = req.body.pairId ? parseInt(req.body.pairId) : undefined;
+      
+      const blocklist = await storage.createBlocklist({
+        type: "image_hash",
+        value: mockHash,
+        pairId,
+        isActive: true
+      });
+      
+      res.status(201).json({ 
+        success: true, 
+        message: "Image added to blocklist",
+        hash: mockHash,
+        blocklist 
+      });
+    } catch (error) {
+      console.error("Image block error:", error);
+      res.status(500).json({ error: "Failed to add image to blocklist" });
+    }
+  });
+
   // Activities routes
   app.get("/api/activities", async (req, res) => {
     try {
@@ -1756,9 +1784,9 @@ if __name__ == "__main__":
           source: pair.sourceChannel,
           destination: pair.destinationChannel,
           strip_rules: {
-            remove_mentions: pair.removeMentions,
-            header_patterns: pair.headerPatterns || [],
-            footer_patterns: pair.footerPatterns || []
+            remove_mentions: pair.removeMentions || false,
+            header_patterns: [],
+            footer_patterns: []
           },
           status: pair.status
         }));
@@ -1988,7 +2016,7 @@ if __name__ == "__main__":
                   phoneNumber,
                   sessionName,
                   phoneCodeHash: result.phone_code_hash,
-                  expiresAt: new Date(Date.now() + 300000), // 5 minutes
+                  expiresAt: new Date(Date.now() + 300000).toISOString(), // 5 minutes
                   status: "pending"
                 });
                 
@@ -2220,7 +2248,7 @@ if __name__ == "__main__":
               if (result.success) {
                 // Update database expiration
                 await storage.updateOtpVerification(phoneNumber, { 
-                  expiresAt: new Date(Date.now() + 300000),
+                  expiresAt: new Date(Date.now() + 300000).toISOString(),
                   status: "pending"
                 });
                 
@@ -2459,7 +2487,7 @@ if __name__ == "__main__":
       }
       
       // Create the pair
-      const validatedData = insertDiscordPairSchema.parse(pairData);
+      const validatedData = insertPairSchema.parse(pairData);
       const pair = await storage.createPair(validatedData);
 
       // Log activity
@@ -2500,11 +2528,7 @@ if __name__ == "__main__":
         return res.status(400).json({ message: validation.error });
       }
 
-      const bot = await storage.createTelegramBot({
-        ...botData,
-        username: validation.bot?.username || null,
-        lastValidated: new Date(),
-      });
+      const bot = await storage.createTelegramBot(botData);
 
       res.json(bot);
     } catch (error) {

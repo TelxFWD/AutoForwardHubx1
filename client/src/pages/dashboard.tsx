@@ -4,7 +4,7 @@ import PairsTable from "@/components/pairs-table";
 import SessionStatus from "@/components/session-status";
 import SessionControls from "@/components/session-controls";
 import BlocklistSummary from "@/components/blocklist-summary";
-import TrapDetection from "@/components/trap-detection";
+import BlockManager from "@/components/block-manager";
 import ActivityFeed from "@/components/activity-feed";
 import AddPairModal from "@/components/add-pair-modal";
 import AddSessionModal from "@/components/add-session-modal";
@@ -121,7 +121,7 @@ export default function Dashboard({ activeTab = "dashboard" }: DashboardProps) {
         );
       
       case "blocklist":
-        return <TrapDetection />;
+        return <BlockManager />;
       
       case "monitoring":
         return (
