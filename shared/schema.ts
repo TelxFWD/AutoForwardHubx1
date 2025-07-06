@@ -1,135 +1,135 @@
-import { pgTable, text, serial, integer, boolean, timestamp, json } from "drizzle-orm/pg-core";
+import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-export const users = pgTable("users", {
-  id: serial("id").primaryKey(),
+export const users = sqliteTable("users", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   pin: text("pin").notNull().unique(), // 4-digit PIN (hashed)
   pinHash: text("pin_hash").notNull(), // bcrypt hash of PIN
   displayName: text("display_name"), // Optional display name
-  isActive: boolean("is_active").default(true),
-  lastLogin: timestamp("last_login"),
-  createdAt: timestamp("created_at").defaultNow(),
+  isActive: integer("is_active", { mode: "boolean" }).default(true),
+  lastLogin: text("last_login"), // ISO string format
+  createdAt: text("created_at").default("datetime('now')"), // ISO string format
 });
 
-export const userSessions = pgTable("user_sessions", {
-  id: serial("id").primaryKey(),
+export const userSessions = sqliteTable("user_sessions", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   userId: integer("user_id").notNull(),
   sessionToken: text("session_token").notNull().unique(),
-  expiresAt: timestamp("expires_at").notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
+  expiresAt: text("expires_at").notNull(), // ISO string format
+  createdAt: text("created_at").default("datetime('now')"), // ISO string format
 });
 
-export const pairs = pgTable("pairs", {
-  id: serial("id").primaryKey(),
+export const pairs = sqliteTable("pairs", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   userId: integer("user_id").notNull(), // Associated user
   name: text("name").notNull(),
   pairType: text("pair_type").notNull().default("telegram"), // telegram, discord
   sourceChannel: text("source_channel").notNull(),
   discordWebhook: text("discord_webhook"), // Optional for telegram pairs
   discordChannelId: text("discord_channel_id"), // Discord channel ID for auto-webhook
-  autoWebhook: boolean("auto_webhook").default(false), // Auto-create webhook toggle
+  autoWebhook: integer("auto_webhook", { mode: "boolean" }).default(false), // Auto-create webhook toggle
   destinationChannel: text("destination_channel").notNull(),
   botToken: text("bot_token"), // Optional for telegram pairs
-  telegramBotId: integer("telegram_bot_id").references(() => telegramBots.id),
-  discordBotId: integer("discord_bot_id").references(() => discordBots.id),
+  telegramBotId: integer("telegram_bot_id"),
+  discordBotId: integer("discord_bot_id"),
   session: text("session_name").notNull(),
   status: text("status").notNull().default("active"), // active, paused, error
-  enableAI: boolean("enable_ai").default(false),
+  enableAI: integer("enable_ai", { mode: "boolean" }).default(false),
   // Telegram-specific fields
-  removeMentions: boolean("remove_mentions").default(true),
-  headerPatterns: text("header_patterns").array(), // Array of patterns
-  footerPatterns: text("footer_patterns").array(), // Array of patterns
+  removeMentions: integer("remove_mentions", { mode: "boolean" }).default(true),
+  headerPatterns: text("header_patterns"), // JSON string of array
+  footerPatterns: text("footer_patterns"), // JSON string of array
   messageCount: integer("message_count").default(0),
   blockedCount: integer("blocked_count").default(0),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: text("created_at").default("datetime('now')"), // ISO string format
+  updatedAt: text("updated_at").default("datetime('now')"), // ISO string format
 });
 
-export const discordBots = pgTable("discord_bots", {
-  id: serial("id").primaryKey(),
+export const discordBots = sqliteTable("discord_bots", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   userId: integer("user_id").notNull(), // Associated user
   name: text("name").notNull(),
   token: text("token").notNull(),
   status: text("status").notNull().default("active"), // active, inactive, error
   guilds: integer("guilds").default(0),
-  lastPing: timestamp("last_ping"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  lastPing: text("last_ping"), // ISO string format
+  createdAt: text("created_at").default("datetime('now')"), // ISO string format
+  updatedAt: text("updated_at").default("datetime('now')"), // ISO string format
 });
 
-export const telegramBots = pgTable("telegram_bots", {
-  id: serial("id").primaryKey(),
+export const telegramBots = sqliteTable("telegram_bots", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   userId: integer("user_id").notNull(), // Associated user
   name: text("name").notNull(),
   token: text("token").notNull(),
   username: text("username"),
   status: text("status").notNull().default("active"), // active, inactive, error
-  isDefault: boolean("is_default").default(false),
-  lastValidated: timestamp("last_validated"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  isDefault: integer("is_default", { mode: "boolean" }).default(false),
+  lastValidated: text("last_validated"), // ISO string format
+  createdAt: text("created_at").default("datetime('now')"), // ISO string format
+  updatedAt: text("updated_at").default("datetime('now')"), // ISO string format
 });
 
-export const sessions = pgTable("sessions", {
-  id: serial("id").primaryKey(),
+export const sessions = sqliteTable("sessions", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   userId: integer("user_id").notNull(), // Associated user
   name: text("name").notNull(),
   phone: text("phone").notNull(),
   sessionFile: text("session_file").notNull(),
   status: text("status").notNull().default("active"), // active, inactive, error
-  lastActive: timestamp("last_active").defaultNow(),
-  createdAt: timestamp("created_at").defaultNow(),
+  lastActive: text("last_active").default("datetime('now')"), // ISO string format
+  createdAt: text("created_at").default("datetime('now')"), // ISO string format
 });
 
-export const blocklists = pgTable("blocklists", {
-  id: serial("id").primaryKey(),
+export const blocklists = sqliteTable("blocklists", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   type: text("type").notNull(), // word, image_hash, trap_pattern
   value: text("value").notNull(),
   pairId: integer("pair_id"), // null for global blocklist
-  isActive: boolean("is_active").default(true),
-  createdAt: timestamp("created_at").defaultNow(),
+  isActive: integer("is_active", { mode: "boolean" }).default(true),
+  createdAt: text("created_at").default("datetime('now')"), // ISO string format
 });
 
-export const messageMappings = pgTable("message_mappings", {
-  id: serial("id").primaryKey(),
+export const messageMappings = sqliteTable("message_mappings", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   telegramMessageId: text("telegram_message_id").notNull(),
   discordMessageId: text("discord_message_id"),
   destinationTelegramMessageId: text("destination_telegram_message_id"),
   pairId: integer("pair_id").notNull(),
   status: text("status").notNull().default("forwarded"), // forwarded, blocked, error
-  createdAt: timestamp("created_at").defaultNow(),
+  createdAt: text("created_at").default("datetime('now')"), // ISO string format
 });
 
-export const activities = pgTable("activities", {
-  id: serial("id").primaryKey(),
+export const activities = sqliteTable("activities", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   type: text("type").notNull(), // message_forwarded, trap_detected, session_connected, pair_paused, etc.
   message: text("message").notNull(),
   details: text("details"),
   pairId: integer("pair_id"),
   sessionId: integer("session_id"),
   severity: text("severity").notNull().default("info"), // info, warning, error, success
-  createdAt: timestamp("created_at").defaultNow(),
+  createdAt: text("created_at").default("datetime('now')"), // ISO string format
 });
 
-export const systemStats = pgTable("system_stats", {
-  id: serial("id").primaryKey(),
+export const systemStats = sqliteTable("system_stats", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   activePairs: integer("active_pairs").default(0).notNull(),
   totalMessages: integer("total_messages").default(0).notNull(),
   blockedMessages: integer("blocked_messages").default(0).notNull(),
   activeSessions: integer("active_sessions").default(0).notNull(),
-  lastUpdated: timestamp("last_updated").defaultNow().notNull(),
+  lastUpdated: text("last_updated").default("datetime('now')").notNull(), // ISO string format
 });
 
-export const otpVerification = pgTable("otp_verification", {
-  id: serial("id").primaryKey(),
+export const otpVerification = sqliteTable("otp_verification", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
   phoneNumber: text("phone_number").notNull().unique(),
   phoneCodeHash: text("phone_code_hash").notNull(),
   sessionName: text("session_name").notNull(),
   userId: integer("user_id"),
   status: text("status").notNull().default("pending"), // pending, verified, expired
-  expiresAt: timestamp("expires_at").notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
+  expiresAt: text("expires_at").notNull(), // ISO string format
+  createdAt: text("created_at").default("datetime('now')"), // ISO string format
 });
 
 // Insert schemas
@@ -164,8 +164,8 @@ export const insertTelegramPairSchema = createInsertSchema(pairs).omit({
 }).extend({
   pairType: z.literal("telegram"),
   removeMentions: z.boolean().default(true),
-  headerPatterns: z.array(z.string()).default([]),
-  footerPatterns: z.array(z.string()).default([]),
+  headerPatterns: z.string().optional(), // JSON string
+  footerPatterns: z.string().optional(), // JSON string
 });
 
 export const insertDiscordPairSchema = createInsertSchema(pairs).omit({

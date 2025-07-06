@@ -38,7 +38,7 @@ function initializeSQLite() {
   }
 }
 
-// Try PostgreSQL first, then SQLite
+// Default to SQLite, with PostgreSQL as an optional upgrade
 if (process.env.DATABASE_URL && (process.env.DATABASE_URL.startsWith('postgresql://') || process.env.DATABASE_URL.startsWith('postgres://'))) {
   try {
     pool = new Pool({ connectionString: process.env.DATABASE_URL });
@@ -49,11 +49,10 @@ if (process.env.DATABASE_URL && (process.env.DATABASE_URL.startsWith('postgresql
     console.log("Falling back to SQLite database");
     initializeSQLite();
   }
-} else if (process.env.DATABASE_URL && process.env.DATABASE_URL.startsWith('sqlite:')) {
-  // SQLite connection
-  initializeSQLite();
 } else {
-  console.log("No DATABASE_URL configured. Database will be unavailable.");
+  // Default to SQLite for local development and deployment
+  console.log("🔄 Using SQLite database (default)");
+  initializeSQLite();
 }
 
 export { pool, db };

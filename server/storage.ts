@@ -6,7 +6,8 @@ import {
   type DiscordBot, type InsertDiscordBot, type TelegramBot, type InsertTelegramBot
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, isNull, desc } from "drizzle-orm";
+import { eq, isNull, desc, lt } from "drizzle-orm";
+import { SqliteStorage } from "./sqlite-storage";
 
 export interface IStorage {
   // Users
@@ -317,10 +318,10 @@ export class DatabaseStorage implements IStorage {
 
   async cleanExpiredOtpVerifications(): Promise<void> {
     if (!db) throw new Error("Database not available");
-    const now = new Date();
+    const now = new Date().toISOString();
     await db
       .delete(otpVerification)
-      .where(eq(otpVerification.expiresAt, now));
+      .where(lt(otpVerification.expiresAt, now));
   }
 
   // Discord Bots
@@ -348,7 +349,7 @@ export class DatabaseStorage implements IStorage {
     if (!db) throw new Error("Database not available");
     const [updated] = await db
       .update(discordBots)
-      .set({ ...updates, updatedAt: new Date() })
+      .set({ ...updates, updatedAt: new Date().toISOString() })
       .where(eq(discordBots.id, id))
       .returning();
     return updated || undefined;
@@ -386,7 +387,7 @@ export class DatabaseStorage implements IStorage {
     if (!db) throw new Error("Database not available");
     const [updated] = await db
       .update(telegramBots)
-      .set({ ...updates, updatedAt: new Date() })
+      .set({ ...updates, updatedAt: new Date().toISOString() })
       .where(eq(telegramBots.id, id))
       .returning();
     return updated || undefined;
@@ -842,7 +843,7 @@ export class MemStorage implements IStorage {
 }
 
 // Export storage instance - use database if available, otherwise in-memory
-export const storage: IStorage = db ? new DatabaseStorage() : new MemStorage();
+export const storage: IStorage = db ? new SqliteStorage() : new MemStorage();
 
 // For dev purposes, log which storage is being used
 if (db) {
