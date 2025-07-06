@@ -100,9 +100,9 @@ export default function Dashboard({ activeTab = "dashboard" }: DashboardProps) {
     switch (activeTab) {
       case "pairs":
         return (
-          <div className="space-y-6">
+          <div className="space-y-4 md:space-y-6">
             <PairsTable onAddPair={() => setIsAddPairModalOpen(true)} />
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-6">
               <SessionStatus />
               <BlocklistSummary />
             </div>
@@ -111,9 +111,9 @@ export default function Dashboard({ activeTab = "dashboard" }: DashboardProps) {
       
       case "sessions":
         return (
-          <div className="space-y-6">
+          <div className="space-y-4 md:space-y-6">
             <SessionControls />
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-6">
               <SessionStatus />
               <ActivityFeed />
             </div>
@@ -125,9 +125,9 @@ export default function Dashboard({ activeTab = "dashboard" }: DashboardProps) {
       
       case "monitoring":
         return (
-          <div className="space-y-6">
+          <div className="space-y-4 md:space-y-6">
             <ActivityFeed />
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-6">
               <SessionStatus />
               <BlocklistSummary />
             </div>
@@ -144,16 +144,16 @@ export default function Dashboard({ activeTab = "dashboard" }: DashboardProps) {
         return (
           <>
             {/* System Control Panel */}
-            <div className="mb-8">
+            <div className="mb-6 md:mb-8">
               <SystemControlPanel />
             </div>
 
             {/* Quick Actions & System Health */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-6 mb-6 md:mb-8">
               {/* Quick Actions Panel */}
-              <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
-                <div className="space-y-3">
+              <div className="bg-white rounded-lg md:rounded-xl shadow-sm p-4 md:p-6 border border-gray-200">
+                <h3 className="text-base md:text-lg font-semibold text-gray-900 mb-3 md:mb-4">Quick Actions</h3>
+                <div className="space-y-2 md:space-y-3">
                   <Button 
                     onClick={() => setIsAddPairModalOpen(true)}
                     className="w-full bg-primary text-white hover:bg-blue-700"

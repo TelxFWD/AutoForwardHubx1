@@ -204,21 +204,21 @@ export default function AddPairModal({ isOpen, onClose }: AddPairModalProps) {
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-4 md:p-6">
         <DialogHeader>
           <div className="flex items-center justify-between">
-            <DialogTitle className="text-xl font-semibold text-gray-900">Create New Pair</DialogTitle>
-            <Button variant="ghost" size="sm" onClick={onClose}>
+            <DialogTitle className="text-lg md:text-xl font-semibold text-gray-900">Create New Pair</DialogTitle>
+            <Button variant="ghost" size="sm" onClick={onClose} className="h-8 w-8 p-0">
               <X className="w-4 h-4" />
             </Button>
           </div>
-          <p className="text-sm text-gray-600 mt-2">
+          <p className="text-xs md:text-sm text-gray-600 mt-2">
             Configure a new message forwarding pair
           </p>
         </DialogHeader>
         
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <form onSubmit={handleSubmit} className="space-y-4 md:space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
             <div>
               <Label htmlFor="pairType">Forwarding Type *</Label>
               <Select value={formData.pairType} onValueChange={(value) => handleInputChange('pairType', value)}>
@@ -514,14 +514,14 @@ export default function AddPairModal({ isOpen, onClose }: AddPairModalProps) {
             )}
           </div>
           
-          <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
-            <Button type="button" variant="outline" onClick={onClose}>
+          <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 md:gap-3 pt-3 md:pt-4 border-t border-gray-200">
+            <Button type="button" variant="outline" onClick={onClose} className="w-full sm:w-auto">
               Cancel
             </Button>
             <Button 
               type="submit" 
               disabled={createPairMutation.isPending}
-              className="bg-primary text-white hover:bg-blue-700"
+              className="w-full sm:w-auto bg-primary text-white hover:bg-blue-700"
             >
               {createPairMutation.isPending ? "Creating..." : "Create Pair"}
             </Button>

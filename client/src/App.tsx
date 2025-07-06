@@ -104,7 +104,8 @@ function App() {
               />
             </ErrorBoundary>
             <main className="flex-1 overflow-y-auto">
-              <div className="p-6">
+              {/* Mobile-friendly padding with top margin for mobile header */}
+              <div className="p-3 md:p-6 pt-16 md:pt-6">
                 <ErrorBoundary>
                   {renderContent()}
                 </ErrorBoundary>

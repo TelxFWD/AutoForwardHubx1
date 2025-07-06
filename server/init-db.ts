@@ -163,6 +163,25 @@ export async function initializeDatabase() {
       await (db as any).run(sql);
     }
 
+    // Migration: Add missing columns if they don't exist
+    try {
+      await (db as any).run(`ALTER TABLE pairs ADD COLUMN strip_footer INTEGER DEFAULT 0`);
+      console.log("✅ Added strip_footer column");
+    } catch (error: any) {
+      if (!error.message.includes('duplicate column name')) {
+        console.log("ℹ️ strip_footer column already exists or migration not needed");
+      }
+    }
+    
+    try {
+      await (db as any).run(`ALTER TABLE pairs ADD COLUMN footer_patterns TEXT`);
+      console.log("✅ Added footer_patterns column");
+    } catch (error: any) {
+      if (!error.message.includes('duplicate column name')) {
+        console.log("ℹ️ footer_patterns column already exists or migration not needed");
+      }
+    }
+
     console.log("✅ Database tables initialized successfully");
     return true;
   } catch (error) {

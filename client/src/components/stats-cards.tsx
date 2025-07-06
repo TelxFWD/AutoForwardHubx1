@@ -10,11 +10,11 @@ export default function StatsCards() {
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6 mb-6 md:mb-8">
         {[...Array(4)].map((_, i) => (
           <Card key={i} className="animate-pulse">
-            <CardContent className="p-6">
-              <div className="h-24 bg-gray-200 rounded"></div>
+            <CardContent className="p-4 md:p-6">
+              <div className="h-20 md:h-24 bg-gray-200 rounded"></div>
             </CardContent>
           </Card>
         ))}
@@ -59,26 +59,26 @@ export default function StatsCards() {
   ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6 mb-6 md:mb-8">
       {statCards.map((card, index) => (
-        <Card key={index} className="bg-white rounded-xl shadow-sm border border-gray-200">
-          <CardContent className="p-6">
+        <Card key={index} className="bg-white rounded-lg md:rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow duration-200">
+          <CardContent className="p-4 md:p-6">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">{card.title}</p>
-                <p className="text-3xl font-bold text-gray-900">{formatNumber(card.value)}</p>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs md:text-sm font-medium text-gray-600 truncate">{card.title}</p>
+                <p className="text-xl md:text-3xl font-bold text-gray-900 mt-1">{formatNumber(card.value)}</p>
               </div>
-              <div className={`w-12 h-12 ${card.iconBg} rounded-lg flex items-center justify-center`}>
-                <i className={`${card.icon} ${card.iconColor} text-xl`}></i>
+              <div className={`w-10 h-10 md:w-12 md:h-12 ${card.iconBg} rounded-lg flex items-center justify-center flex-shrink-0 ml-3`}>
+                <i className={`${card.icon} ${card.iconColor} text-lg md:text-xl`}></i>
               </div>
             </div>
-            <div className="mt-4 flex items-center space-x-2">
+            <div className="mt-3 md:mt-4 flex items-center space-x-2">
               {card.trend === "up" ? (
-                <i className="fas fa-arrow-up text-success text-sm"></i>
+                <i className="fas fa-arrow-up text-green-600 text-xs md:text-sm"></i>
               ) : (
-                <div className="w-2 h-2 bg-success rounded-full"></div>
+                <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-green-600 rounded-full"></div>
               )}
-              <span className={`text-sm ${card.trend === "up" ? "text-success" : "text-gray-600"}`}>
+              <span className={`text-xs md:text-sm truncate ${card.trend === "up" ? "text-green-600" : "text-gray-600"}`}>
                 {card.subtitle}
               </span>
             </div>
