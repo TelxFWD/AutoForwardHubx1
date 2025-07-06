@@ -102,10 +102,10 @@ export default function SystemControlPanel() {
   const healthStatus = getSystemHealthStatus();
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center justify-between">
-          <span>System Control Panel</span>
+    <Card className="p-4 sm:p-6">
+      <CardHeader className="pb-4 px-0">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <CardTitle className="text-lg md:text-xl">System Control Panel</CardTitle>
           <div className="flex items-center space-x-2">
             <div className={`w-3 h-3 rounded-full ${
               healthStatus.status === 'active' ? 'bg-green-500' :
@@ -116,53 +116,51 @@ export default function SystemControlPanel() {
               {healthStatus.text}
             </span>
           </div>
-        </CardTitle>
-        <CardDescription>
+        </div>
+        <CardDescription className="text-xs sm:text-sm">
           Control all pairs system-wide and monitor system health
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-6">
+      <CardContent className="space-y-4 md:space-y-6 px-0">
         {/* System Status Overview */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="text-center p-3 border rounded-lg">
-            <div className="text-2xl font-bold text-green-600">{activePairs.length}</div>
-            <div className="text-sm text-muted-foreground">Active Pairs</div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 md:gap-4">
+          <div className="text-center p-2 md:p-3 border rounded-lg bg-green-50 border-green-200">
+            <div className="text-lg md:text-2xl font-bold text-green-600">{activePairs.length}</div>
+            <div className="text-xs md:text-sm text-green-600 font-medium">Active Pairs</div>
           </div>
-          <div className="text-center p-3 border rounded-lg">
-            <div className="text-2xl font-bold text-yellow-600">{pausedPairs.length}</div>
-            <div className="text-sm text-muted-foreground">Paused Pairs</div>
+          <div className="text-center p-2 md:p-3 border rounded-lg bg-yellow-50 border-yellow-200">
+            <div className="text-lg md:text-2xl font-bold text-yellow-600">{pausedPairs.length}</div>
+            <div className="text-xs md:text-sm text-yellow-600 font-medium">Paused Pairs</div>
           </div>
-          <div className="text-center p-3 border rounded-lg">
-            <div className="text-2xl font-bold text-red-600">{errorPairs.length}</div>
-            <div className="text-sm text-muted-foreground">Error Pairs</div>
+          <div className="text-center p-2 md:p-3 border rounded-lg bg-red-50 border-red-200">
+            <div className="text-lg md:text-2xl font-bold text-red-600">{errorPairs.length}</div>
+            <div className="text-xs md:text-sm text-red-600 font-medium">Error Pairs</div>
           </div>
-          <div className="text-center p-3 border rounded-lg">
-            <div className="text-2xl font-bold text-blue-600">{pairs.length}</div>
-            <div className="text-sm text-muted-foreground">Total Pairs</div>
+          <div className="text-center p-2 md:p-3 border rounded-lg bg-blue-50 border-blue-200">
+            <div className="text-lg md:text-2xl font-bold text-blue-600">{pairs.length}</div>
+            <div className="text-xs md:text-sm text-blue-600 font-medium">Total Pairs</div>
           </div>
         </div>
 
         {/* Global Control Buttons */}
-        <div className="flex flex-col sm:flex-row gap-3">
+        <div className="flex flex-col sm:flex-row gap-2 md:gap-3">
           {isGloballyActive ? (
             <Button
               onClick={() => pauseAllMutation.mutate()}
               disabled={isExecutingCommand || pairs.length === 0}
-              className="flex-1 bg-yellow-600 text-white hover:bg-yellow-700"
-              size="lg"
+              className="flex-1 bg-yellow-600 text-white hover:bg-yellow-700 h-10 md:h-12 text-sm md:text-base"
             >
-              <Pause className="w-5 h-5 mr-2" />
-              {pauseAllMutation.isPending ? "Pausing All..." : `Pause All Pairs (${activePairs.length})`}
+              <Pause className="w-4 h-4 md:w-5 md:h-5 mr-1 md:mr-2" />
+              {pauseAllMutation.isPending ? "Pausing..." : `Pause All (${activePairs.length})`}
             </Button>
           ) : (
             <Button
               onClick={() => resumeAllMutation.mutate()}
               disabled={isExecutingCommand || pausedPairs.length === 0}
-              className="flex-1 bg-green-600 text-white hover:bg-green-700"
-              size="lg"
+              className="flex-1 bg-green-600 text-white hover:bg-green-700 h-10 md:h-12 text-sm md:text-base"
             >
-              <Play className="w-5 h-5 mr-2" />
-              {resumeAllMutation.isPending ? "Resuming All..." : `Resume All Pairs (${pausedPairs.length})`}
+              <Play className="w-4 h-4 md:w-5 md:h-5 mr-1 md:mr-2" />
+              {resumeAllMutation.isPending ? "Resuming..." : `Resume All (${pausedPairs.length})`}
             </Button>
           )}
           
@@ -177,9 +175,9 @@ export default function SystemControlPanel() {
               });
             }}
             disabled={isExecutingCommand}
-            size="lg"
+            className="sm:flex-none sm:w-auto h-10 md:h-12 text-sm md:text-base"
           >
-            <RefreshCw className="w-5 h-5 mr-2" />
+            <RefreshCw className="w-4 h-4 md:w-5 md:h-5 mr-1 md:mr-2" />
             Refresh
           </Button>
         </div>
